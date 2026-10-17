@@ -1,0 +1,117 @@
+@import "tailwindcss";
+
+/* ============================================================
+   Bruno Saavedra — sistema de diseño
+   Grafito + azul acero: industrial, sobrio, legible en papel y en pantalla.
+   Todo par de color usado en texto cumple WCAG AA (4.5:1).
+   ============================================================ */
+
+@theme {
+  --font-sans: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-mono), ui-monospace, Consolas, monospace;
+
+  /* --- Grafito --- */
+  --color-ink-50: #f6f7f9;
+  --color-ink-100: #eceef2;
+  --color-ink-200: #d9dde4;
+  --color-ink-300: #b9c0cb;
+  --color-ink-400: #8a93a1;
+  --color-ink-500: #636c7a; /* AA sobre blanco (5.4:1) */
+  --color-ink-600: #4a5260;
+  --color-ink-700: #353c48;
+  --color-ink-800: #222832;
+  --color-ink-900: #151a21;
+  --color-ink-950: #0c0f14;
+
+  /* --- Azul acero (acento) --- */
+  --color-acero-50: #eef6fb;
+  --color-acero-100: #d6e9f5;
+  --color-acero-200: #acd2ea;
+  --color-acero-300: #77b3d9;
+  --color-acero-400: #3f8fc4;
+  --color-acero-500: #1f73ab;
+  --color-acero-600: #145c8c; /* AA sobre blanco (6.9:1) */
+  --color-acero-700: #114b72;
+  --color-acero-800: #0f3c5b;
+  --color-acero-900: #0c2e45;
+
+  /* --- Ritmo tipográfico --- */
+  --text-hero: clamp(2rem, 1.2rem + 3.4vw, 3.5rem);
+  --text-hero--line-height: 1.08;
+  --text-hero--letter-spacing: -0.025em;
+  --text-eyebrow: 0.75rem;
+  --text-eyebrow--line-height: 1.4;
+  --text-eyebrow--letter-spacing: 0.14em;
+
+  --radius-card: 0.5rem;
+}
+
+/* --- Tokens semánticos: claro por defecto, oscuro según el sistema --- */
+:root {
+  --fondo: var(--color-ink-50);
+  --superficie: #ffffff;
+  --texto: var(--color-ink-900);
+  --texto-suave: var(--color-ink-600);
+  --borde: var(--color-ink-200);
+  --acento: var(--color-acero-600);
+  --acento-suave: var(--color-acero-50);
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --fondo: var(--color-ink-950);
+    --superficie: var(--color-ink-900);
+    --texto: var(--color-ink-50);
+    --texto-suave: var(--color-ink-300);
+    --borde: var(--color-ink-700);
+    --acento: var(--color-acero-300);
+    --acento-suave: var(--color-acero-900);
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --fondo: var(--color-ink-950);
+  --superficie: var(--color-ink-900);
+  --texto: var(--color-ink-50);
+  --texto-suave: var(--color-ink-300);
+  --borde: var(--color-ink-700);
+  --acento: var(--color-acero-300);
+  --acento-suave: var(--color-acero-900);
+  color-scheme: dark;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    background: var(--fondo);
+    color: var(--texto);
+    font-family: var(--font-sans);
+    line-height: 1.6;
+  }
+
+  a {
+    color: inherit;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--acento);
+    outline-offset: 3px;
+    border-radius: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}

@@ -1,0 +1,11 @@
+# Estrategia de marca personal (diagnóstico, ofertas, LinkedIn): solo local, el repo es público.
+docs/
+
+node_modules/
+dist/
+.astro/
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store

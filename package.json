@@ -1,0 +1,25 @@
+{
+  "name": "saavedracbr-portafolio",
+  "type": "module",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Portafolio de Bruno Saavedra Carbajal: casos, demos interactivas y CV.",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "check": "astro check",
+    "cv": "astro build && node scripts/cv-pdf.mjs"
+  },
+  "dependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "astro": "^7.2.4",
+    "qrcode": "^1.5.4",
+    "tailwindcss": "^4.3.3"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.10",
+    "@types/qrcode": "^1.5.5",
+    "typescript": "^6.0.3"
+  }
+}

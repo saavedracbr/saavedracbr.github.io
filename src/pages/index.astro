@@ -1,0 +1,54 @@
+---
+import Base from '../layouts/Base.astro';
+import { persona, oferta, pilares } from '../data/perfil.ts';
+import { ruta } from '../utils/rutas.ts';
+
+// Versión mínima de la portada: la oferta, los pilares y el CV. Los casos y las
+// demos se suman aquí cuando tengan página propia.
+---
+
+<Base titulo={`${persona.nombreCorto} – ${persona.titulo}`} descripcion={oferta.frase}>
+  <section class="mx-auto max-w-5xl px-4 pb-12 pt-14 sm:px-6 sm:pt-20">
+    <p class="font-mono text-eyebrow uppercase text-[var(--acento)]">
+      {persona.titulo} · {persona.universidad}
+    </p>
+    <h1 class="mt-4 max-w-3xl text-hero font-semibold">{oferta.frase}</h1>
+    <p class="mt-6 max-w-2xl text-lg text-[var(--texto-suave)]">{oferta.busqueda}</p>
+    <div class="mt-8 flex flex-wrap gap-3">
+      <a
+        href={ruta('/cv-bruno-saavedra.pdf')}
+        class="rounded-[var(--radius-card)] bg-[var(--acento)] px-5 py-3 font-medium text-white no-underline hover:opacity-90 dark:text-[var(--color-ink-950)]"
+        >Descargar CV (PDF)</a
+      >
+      <a
+        href={`mailto:${persona.email}`}
+        class="rounded-[var(--radius-card)] border border-[var(--borde)] bg-[var(--superficie)] px-5 py-3 font-medium no-underline hover:border-[var(--acento)]"
+        >Escríbeme</a
+      >
+      <a
+        href={persona.linkedin}
+        class="rounded-[var(--radius-card)] border border-[var(--borde)] bg-[var(--superficie)] px-5 py-3 font-medium no-underline hover:border-[var(--acento)]"
+        rel="me">LinkedIn</a
+      >
+    </div>
+  </section>
+
+  <section class="mx-auto max-w-5xl px-4 pb-20 sm:px-6" aria-labelledby="pilares">
+    <h2 id="pilares" class="text-2xl font-semibold tracking-tight">Lo que aporto</h2>
+    <ul class="mt-6 grid gap-4 sm:grid-cols-2">
+      {
+        pilares.map((pilar) => (
+          <li class="rounded-[var(--radius-card)] border border-[var(--borde)] bg-[var(--superficie)] p-5">
+            <h3 class="font-semibold">{pilar.titulo}</h3>
+            <p class="mt-2 text-[var(--texto-suave)]">{pilar.frase}</p>
+            <ul class="mt-4 flex flex-wrap gap-2 text-sm">
+              {pilar.evidencia.map((e) => (
+                <li class="rounded bg-[var(--acento-suave)] px-2 py-1 text-[var(--acento)]">{e}</li>
+              ))}
+            </ul>
+          </li>
+        ))
+      }
+    </ul>
+  </section>
+</Base>

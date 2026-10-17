@@ -1,0 +1,105 @@
+---
+import { Font } from 'astro:assets';
+import { persona } from '../data/perfil.ts';
+import { ruta, urlAbsoluta } from '../utils/rutas.ts';
+import '../styles/global.css';
+
+interface Props {
+  titulo: string;
+  descripcion: string;
+  noindex?: boolean;
+}
+
+const { titulo, descripcion, noindex = false } = Astro.props;
+
+const tituloCompleto = titulo.includes(persona.nombreCorto) ? titulo : `${titulo} | ${persona.nombreCorto}`;
+const rutaCanonica = Astro.url.pathname.endsWith('/') ? Astro.url.pathname : `${Astro.url.pathname}/`;
+const canonica = new URL(rutaCanonica, Astro.site).href;
+
+// Navegación: solo lo que ya existe. Casos, Demos y Certificaciones se suman
+// cuando tengan página.
+const navegacion = [
+  { etiqueta: 'Inicio', href: '/' },
+  { etiqueta: 'CV', href: '/cv' },
+];
+const actual = Astro.url.pathname.replace(/\/$/, '') || '/';
+
+const personaJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Person',
+  name: persona.nombre,
+  jobTitle: persona.titulo,
+  alumniOf: { '@type': 'CollegeOrUniversity', name: persona.universidad },
+  email: `mailto:${persona.email}`,
+  url: urlAbsoluta('/', Astro.site),
+  sameAs: [persona.linkedin],
+  address: { '@type': 'PostalAddress', addressLocality: 'Lima', addressCountry: 'PE' },
+};
+---
+
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{tituloCompleto}</title>
+    <meta name="description" content={descripcion} />
+    <link rel="canonical" href={canonica} />
+    {noindex && <meta name="robots" content="noindex" />}
+    <meta property="og:type" content="profile" />
+    <meta property="og:title" content={tituloCompleto} />
+    <meta property="og:description" content={descripcion} />
+    <meta property="og:url" content={canonica} />
+    <meta property="og:locale" content="es_PE" />
+    <meta name="theme-color" content="#145c8c" />
+    <Font cssVariable="--font-body" preload />
+    <Font cssVariable="--font-mono" />
+    <script type="application/ld+json" set:html={JSON.stringify(personaJsonLd)} />
+  </head>
+  <body class="min-h-dvh flex flex-col">
+    <a
+      href="#contenido"
+      class="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded focus:bg-[var(--superficie)] focus:px-3 focus:py-2"
+      >Saltar al contenido</a
+    >
+    <header class="border-b border-[var(--borde)] bg-[var(--superficie)]">
+      <div class="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
+        <a href={ruta('/')} class="font-semibold tracking-tight no-underline">{persona.nombreCorto}</a>
+        <nav aria-label="Principal">
+          <ul class="flex gap-5 text-sm">
+            {
+              navegacion.map((item) => (
+                <li>
+                  <a
+                    href={ruta(item.href)}
+                    class:list={[
+                      'no-underline hover:text-[var(--acento)]',
+                      actual === item.href ? 'text-[var(--acento)] font-medium' : 'text-[var(--texto-suave)]',
+                    ]}
+                    aria-current={actual === item.href ? 'page' : undefined}
+                  >
+                    {item.etiqueta}
+                  </a>
+                </li>
+              ))
+            }
+          </ul>
+        </nav>
+      </div>
+    </header>
+
+    <main id="contenido" class="flex-1">
+      <slot />
+    </main>
+
+    <footer class="border-t border-[var(--borde)] text-sm text-[var(--texto-suave)]">
+      <div class="mx-auto flex max-w-5xl flex-wrap justify-between gap-3 px-4 py-6 sm:px-6">
+        <p>{persona.nombre} · {persona.ubicacion}</p>
+        <p class="flex gap-4">
+          <a href={`mailto:${persona.email}`} class="hover:text-[var(--acento)]">{persona.email}</a>
+          <a href={persona.linkedin} class="hover:text-[var(--acento)]" rel="me">LinkedIn</a>
+        </p>
+      </div>
+    </footer>
+  </body>
+</html>
