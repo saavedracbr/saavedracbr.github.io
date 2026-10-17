@@ -16,13 +16,18 @@ const tituloCompleto = titulo.includes(persona.nombreCorto) ? titulo : `${titulo
 const rutaCanonica = Astro.url.pathname.endsWith('/') ? Astro.url.pathname : `${Astro.url.pathname}/`;
 const canonica = new URL(rutaCanonica, Astro.site).href;
 
-// Navegación: solo lo que ya existe. Casos, Demos y Certificaciones se suman
-// cuando tengan página.
+// Navegación: solo lo que ya existe. Demos y Certificaciones se suman cuando
+// tengan página. En el celular Inicio se oculta: el nombre ya lleva ahí.
 const navegacion = [
   { etiqueta: 'Inicio', href: '/' },
+  { etiqueta: 'ERP', href: '/erp' },
+  { etiqueta: 'Casos', href: '/casos' },
+  { etiqueta: 'Dashboard', href: '/dashboard' },
   { etiqueta: 'CV', href: '/cv' },
 ];
 const actual = Astro.url.pathname.replace(/\/$/, '') || '/';
+// Una sección queda marcada también en sus subpáginas (/casos/turnos-produccion).
+const esActual = (href: string) => actual === href || (href !== '/' && actual.startsWith(`${href}/`));
 
 const personaJsonLd = {
   '@context': 'https://schema.org',
@@ -66,17 +71,17 @@ const personaJsonLd = {
       <div class="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
         <a href={ruta('/')} class="font-semibold tracking-tight no-underline">{persona.nombreCorto}</a>
         <nav aria-label="Principal">
-          <ul class="flex gap-5 text-sm">
+          <ul class="flex gap-3 text-sm sm:gap-5">
             {
               navegacion.map((item) => (
-                <li>
+                <li class:list={[item.href === '/' && 'hidden sm:block']}>
                   <a
                     href={ruta(item.href)}
                     class:list={[
                       'no-underline hover:text-[var(--acento)]',
-                      actual === item.href ? 'text-[var(--acento)] font-medium' : 'text-[var(--texto-suave)]',
+                      esActual(item.href) ? 'text-[var(--acento)] font-medium' : 'text-[var(--texto-suave)]',
                     ]}
-                    aria-current={actual === item.href ? 'page' : undefined}
+                    aria-current={actual === item.href ? 'page' : esActual(item.href) ? 'true' : undefined}
                   >
                     {item.etiqueta}
                   </a>

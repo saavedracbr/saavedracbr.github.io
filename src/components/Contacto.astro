@@ -1,0 +1,22 @@
+---
+/** Cierre de las páginas de contenido: qué busco y cómo contactarme. */
+import { persona, oferta } from '../data/perfil.ts';
+import { ruta } from '../utils/rutas.ts';
+---
+
+<aside class="mt-16 rounded-[var(--radius-card)] bg-[var(--acento-suave)] p-6 sm:p-8" aria-labelledby="contacto">
+  <h2 id="contacto" class="text-xl font-semibold">¿Buscas a alguien así para una práctica?</h2>
+  <p class="mt-2 text-[var(--texto-suave)]">{oferta.busqueda}</p>
+  <div class="mt-5 flex flex-wrap gap-3">
+    <a
+      href={ruta('/cv-bruno-saavedra.pdf')}
+      class="rounded-[var(--radius-card)] bg-[var(--acento)] px-5 py-3 font-medium text-white no-underline hover:opacity-90 dark:text-[var(--color-ink-950)]"
+      >Descargar CV (PDF)</a
+    >
+    <a
+      href={`mailto:${persona.email}`}
+      class="rounded-[var(--radius-card)] border border-[var(--borde)] bg-[var(--superficie)] px-5 py-3 font-medium no-underline hover:border-[var(--acento)]"
+      >Escríbeme</a
+    >
+  </div>
+</aside>

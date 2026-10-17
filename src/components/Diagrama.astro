@@ -1,0 +1,76 @@
+---
+/**
+ * Diagrama simple en HTML, sin imágenes: un flujo con flechas (de arriba abajo
+ * en el celular, de izquierda a derecha desde 768 px) o una lista de opciones.
+ */
+import type { Diagrama } from '../data/casos.ts';
+
+type Props = Diagrama;
+
+const { titulo, tipo, pasos, nota } = Astro.props;
+---
+
+<figure class="rounded-[var(--radius-card)] border border-[var(--borde)] bg-[var(--superficie)] p-5 sm:p-6">
+  <figcaption class="font-semibold">{titulo}</figcaption>
+  {
+    tipo === 'flujo' ? (
+      <ol class="flujo mt-5">
+        {pasos.map((paso, i) => (
+          <li class="rounded-[var(--radius-card)] border border-[var(--borde)] bg-[var(--fondo)] p-4">
+            <span class="font-mono text-eyebrow text-[var(--acento)]">{String(i + 1).padStart(2, '0')}</span>
+            <p class="mt-1 font-semibold leading-snug">{paso.titulo}</p>
+            <p class="mt-1 text-sm text-[var(--texto-suave)]">{paso.detalle}</p>
+          </li>
+        ))}
+      </ol>
+    ) : (
+      <dl class="mt-5 grid gap-3 sm:grid-cols-2">
+        {pasos.map((paso) => (
+          <div class="rounded-[var(--radius-card)] border border-[var(--borde)] bg-[var(--fondo)] p-4">
+            <dt class="font-semibold">{paso.titulo}</dt>
+            <dd class="mt-1 text-sm text-[var(--texto-suave)]">{paso.detalle}</dd>
+          </div>
+        ))}
+      </dl>
+    )
+  }
+  {nota && <p class="mt-4 text-sm text-[var(--texto-suave)]">{nota}</p>}
+</figure>
+
+<style>
+  .flujo {
+    display: grid;
+    gap: 1.75rem;
+  }
+
+  .flujo > li {
+    position: relative;
+  }
+
+  .flujo > li:not(:last-child)::after {
+    content: '↓';
+    position: absolute;
+    left: 50%;
+    bottom: -1.55rem;
+    transform: translateX(-50%);
+    color: var(--acento);
+    font-weight: 600;
+  }
+
+  @media (min-width: 768px) {
+    .flujo {
+      grid-auto-flow: column;
+      grid-auto-columns: 1fr;
+      gap: 1.75rem;
+    }
+
+    .flujo > li:not(:last-child)::after {
+      content: '→';
+      left: auto;
+      right: -1.4rem;
+      top: 50%;
+      bottom: auto;
+      transform: translateY(-50%);
+    }
+  }
+</style>

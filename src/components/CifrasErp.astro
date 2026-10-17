@@ -1,0 +1,23 @@
+---
+/** Franja con las cifras publicables del ERP de BBA, en la portada y en /erp. */
+import { cifrasErp } from '../data/perfil.ts';
+
+const cifras = [
+  { valor: String(cifrasErp.modulos), etiqueta: 'módulos propios en producción' },
+  { valor: String(cifrasErp.procesos), etiqueta: 'procesos de la planta conectados' },
+  { valor: cifrasErp.usuarios, etiqueta: 'usuarios internos del ERP' },
+  { valor: cifrasErp.colaboradores, etiqueta: 'colaboradores en el piloto de Talento Humano' },
+  { valor: `${cifrasErp.versionDesde} → ${cifrasErp.versionHasta}`, etiqueta: 'migración de versión de Odoo' },
+];
+---
+
+<dl class="grid grid-cols-2 gap-px overflow-hidden rounded-[var(--radius-card)] border border-[var(--borde)] bg-[var(--borde)] sm:grid-cols-3 lg:grid-cols-5">
+  {
+    cifras.map((cifra, i) => (
+      <div class:list={['flex flex-col bg-[var(--superficie)] p-4 sm:p-5', i === cifras.length - 1 && 'col-span-2 sm:col-span-1']}>
+        <dt class="text-sm text-[var(--texto-suave)]">{cifra.etiqueta}</dt>
+        <dd class="order-first text-2xl font-semibold tracking-tight text-[var(--acento)] sm:text-3xl">{cifra.valor}</dd>
+      </div>
+    ))
+  }
+</dl>

@@ -1,0 +1,145 @@
+---
+import Base from '../layouts/Base.astro';
+import CifrasErp from '../components/CifrasErp.astro';
+import Contacto from '../components/Contacto.astro';
+import { cifrasErp } from '../data/perfil.ts';
+import { procesos, trayectoria, metodo, reservas } from '../data/erp.ts';
+import { ruta } from '../utils/rutas.ts';
+
+const descripcion = `El ERP Odoo de BBA Pack, una planta de POP y packaging: ${cifrasErp.modulos} módulos propios en producción en ${cifrasErp.procesos} procesos, de los turnos y el huellero a la planilla PLAME y la facturación SUNAT.`;
+---
+
+<Base titulo="El ERP de una planta, proceso por proceso" descripcion={descripcion}>
+  <article class="mx-auto max-w-5xl px-4 pb-20 pt-12 sm:px-6 sm:pt-16">
+    <header>
+      <p class="font-mono text-eyebrow uppercase text-[var(--acento)]">BBA Pack · ERP Project Manager</p>
+      <h1 class="mt-3 max-w-3xl text-4xl font-semibold tracking-tight sm:text-5xl">
+        El ERP de una planta, proceso por proceso
+      </h1>
+      <div class="mt-5 grid max-w-2xl gap-4 text-lg text-[var(--texto-suave)]">
+        <p>
+          Desde diciembre de 2023 lidero el ERP Odoo de BBA Pack, una planta de material POP y packaging. En 2026 el
+          partner externo salió y hubo que desinstalar todo lo personalizado.
+        </p>
+        <p>
+          Reconstruí el ERP, lo migré de Odoo {cifrasErp.versionDesde} a {cifrasErp.versionHasta} y lo llevé más lejos:
+          hoy conecta los turnos, el huellero, la planilla y SUNAT.
+        </p>
+      </div>
+    </header>
+
+    <div class="mt-10">
+      <CifrasErp />
+    </div>
+
+    <section class="mt-16" aria-labelledby="procesos">
+      <h2 id="procesos" class="text-2xl font-semibold tracking-tight">Los {procesos.length} procesos</h2>
+      <p class="mt-2 max-w-2xl text-[var(--texto-suave)]">
+        Cada paso es un módulo propio, o unos pocos, que resuelve una parte concreta del proceso.
+      </p>
+      <ol class="mt-8 grid gap-6">
+        {
+          procesos.map(({ caso, pasos, modulos }, i) => (
+            <li class="rounded-[var(--radius-card)] border border-[var(--borde)] bg-[var(--superficie)] p-5 sm:p-6">
+              <p class="font-mono text-eyebrow uppercase text-[var(--acento)]">
+                Proceso {i + 1} · {modulos} {modulos === 1 ? 'módulo' : 'módulos'} · {caso.estado}
+              </p>
+              <h3 class="mt-2 text-xl font-semibold tracking-tight">{caso.titulo}</h3>
+              <p class="mt-2 max-w-3xl text-[var(--texto-suave)]">{caso.bajada}</p>
+              <p class="mt-3 text-sm">
+                <span class="font-medium">Útil para:</span> <span class="text-[var(--texto-suave)]">{caso.paraRol}</span>
+              </p>
+              <ol class="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {pasos.map((paso) => (
+                  <li class="rounded-[var(--radius-card)] border border-[var(--borde)] bg-[var(--fondo)] p-4">
+                    <p class="font-semibold leading-snug">{paso.titulo}</p>
+                    <p class="mt-1 text-sm text-[var(--texto-suave)]">{paso.detalle}</p>
+                  </li>
+                ))}
+              </ol>
+              <a href={ruta(`/casos/${caso.slug}`)} class="mt-5 inline-block text-sm font-medium text-[var(--acento)]">
+                Ver el caso completo →
+              </a>
+            </li>
+          ))
+        }
+      </ol>
+    </section>
+
+    <section class="mt-16" aria-labelledby="trayectoria">
+      <h2 id="trayectoria" class="text-2xl font-semibold tracking-tight">Cómo llegó hasta aquí</h2>
+      <ol class="linea mt-8 grid max-w-3xl gap-6">
+        {
+          trayectoria.map((hito) => (
+            <li>
+              <p class="font-mono text-eyebrow uppercase text-[var(--acento)]">{hito.periodo}</p>
+              <p class="mt-1 font-semibold">{hito.titulo}</p>
+              <p class="mt-1 text-[var(--texto-suave)]">{hito.detalle}</p>
+            </li>
+          ))
+        }
+      </ol>
+    </section>
+
+    <section class="mt-16" aria-labelledby="metodo">
+      <h2 id="metodo" class="text-2xl font-semibold tracking-tight">Cómo trabajo</h2>
+      <p class="mt-2 max-w-2xl text-[var(--texto-suave)]">
+        El mismo orden para cada proceso. Yo defino el proceso y la regla; la IA acelera el código, y nada llega a
+        producción sin probarse.
+      </p>
+      <ol class="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {
+          metodo.map((paso, i) => (
+            <li class="rounded-[var(--radius-card)] border border-[var(--borde)] bg-[var(--superficie)] p-4">
+              <span class="font-mono text-eyebrow text-[var(--acento)]">{String(i + 1).padStart(2, '0')}</span>
+              <p class="mt-1 font-semibold leading-snug">{paso.titulo}</p>
+              <p class="mt-1 text-sm text-[var(--texto-suave)]">{paso.detalle}</p>
+            </li>
+          ))
+        }
+      </ol>
+    </section>
+
+    <section class="mt-16" aria-labelledby="reservas">
+      <h2 id="reservas" class="text-2xl font-semibold tracking-tight">Qué no muestro y por qué</h2>
+      <ul class="reservas mt-4 grid max-w-3xl gap-3">
+        {reservas.map((r) => <li>{r}</li>)}
+      </ul>
+    </section>
+
+    <Contacto />
+  </article>
+</Base>
+
+<style>
+  /* Línea de tiempo: una raya vertical con un punto por hito. */
+  .linea {
+    border-left: 2px solid color-mix(in srgb, var(--acento) 35%, var(--borde));
+    padding-left: 1.5rem;
+  }
+
+  .linea > li {
+    position: relative;
+  }
+
+  .linea > li::before {
+    content: '';
+    position: absolute;
+    left: calc(-1.5rem - 6px);
+    top: 0.3rem;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--acento);
+  }
+
+  .reservas {
+    padding-left: 1.25rem;
+    list-style: disc;
+    color: var(--texto-suave);
+  }
+
+  .reservas li::marker {
+    color: var(--acento);
+  }
+</style>

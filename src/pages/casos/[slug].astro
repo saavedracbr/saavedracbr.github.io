@@ -1,0 +1,164 @@
+---
+import type { GetStaticPaths } from 'astro';
+import Base from '../../layouts/Base.astro';
+import Diagrama from '../../components/Diagrama.astro';
+import Contacto from '../../components/Contacto.astro';
+import { casos, type Caso } from '../../data/casos.ts';
+import { ruta } from '../../utils/rutas.ts';
+
+export const getStaticPaths = (() =>
+  casos.map((caso) => ({ params: { slug: caso.slug }, props: { caso } }))) satisfies GetStaticPaths;
+
+interface Props {
+  caso: Caso;
+}
+
+const { caso } = Astro.props;
+const otros = casos.filter((c) => c.slug !== caso.slug);
+const esExterno = (url: string) => /^https?:\/\//.test(url);
+---
+
+<Base titulo={caso.titulo} descripcion={caso.bajada}>
+  <article class="mx-auto max-w-4xl px-4 pb-20 pt-10 sm:px-6 sm:pt-14">
+    <a href={ruta('/casos')} class="text-sm text-[var(--texto-suave)] no-underline hover:text-[var(--acento)]"
+      >← Todos los casos</a
+    >
+
+    <header class="mt-6">
+      <p class="font-mono text-eyebrow uppercase text-[var(--acento)]">{caso.contexto}</p>
+      <h1 class="mt-3 text-4xl font-semibold tracking-tight sm:text-5xl">{caso.titulo}</h1>
+      <p class="mt-5 max-w-2xl text-lg text-[var(--texto-suave)]">{caso.bajada}</p>
+      <p class="mt-4 max-w-2xl">
+        <span class="font-medium">Útil para:</span> <span class="text-[var(--texto-suave)]">{caso.paraRol}</span>
+      </p>
+      <ul class="mt-6 flex flex-wrap gap-2 text-sm" aria-label="Estado y herramientas">
+        <li class="rounded bg-[var(--acento-suave)] px-2 py-1 font-medium text-[var(--acento)]">{caso.estado}</li>
+        {
+          caso.herramientas.map((h) => (
+            <li class="rounded border border-[var(--borde)] px-2 py-1 text-[var(--texto-suave)]">{h}</li>
+          ))
+        }
+      </ul>
+    </header>
+
+    {
+      caso.cifras.length > 0 && (
+        <dl class="mt-10 grid gap-4 sm:grid-cols-2">
+          {caso.cifras.map((cifra) => (
+            <div class="flex flex-col rounded-[var(--radius-card)] border border-[var(--borde)] bg-[var(--superficie)] p-5">
+              <dt class="text-sm text-[var(--texto-suave)]">{cifra.etiqueta}</dt>
+              <dd class="order-first text-3xl font-semibold tracking-tight text-[var(--acento)]">{cifra.valor}</dd>
+            </div>
+          ))}
+        </dl>
+      )
+    }
+
+    <div class="caso mt-12 grid gap-12">
+      <section aria-labelledby="problema">
+        <h2 id="problema">El problema</h2>
+        <ul>{caso.problema.map((p) => <li>{p}</li>)}</ul>
+      </section>
+
+      <section aria-labelledby="solucion">
+        <h2 id="solucion">Lo que hice</h2>
+        <ul>{caso.solucion.map((s) => <li>{s}</li>)}</ul>
+      </section>
+
+      {caso.diagramas.length > 0 && <div class="grid gap-6">{caso.diagramas.map((d) => <Diagrama {...d} />)}</div>}
+
+      <section aria-labelledby="resultado">
+        <h2 id="resultado">Resultado</h2>
+        <ul>{caso.resultado.map((r) => <li>{r}</li>)}</ul>
+        {
+          caso.porMedir.length > 0 && (
+            <>
+              <h3>Lo que voy a medir</h3>
+              <ul>
+                {caso.porMedir.map((m) => (
+                  <li>{m}</li>
+                ))}
+              </ul>
+            </>
+          )
+        }
+      </section>
+
+      {
+        caso.demo && (
+          <p class="rounded-[var(--radius-card)] border border-dashed border-[var(--borde)] p-5 text-[var(--texto-suave)]">
+            {caso.demo} Todas las demos usan datos ficticios.
+          </p>
+        )
+      }
+
+      {
+        caso.enlaces.length > 0 && (
+          <ul class="flex flex-wrap gap-3" aria-label="Enlaces del caso">
+            {caso.enlaces.map((e) => (
+              <li>
+                <a
+                  href={esExterno(e.url) ? e.url : ruta(e.url)}
+                  class="inline-block rounded-[var(--radius-card)] border border-[var(--borde)] bg-[var(--superficie)] px-4 py-2 font-medium no-underline hover:border-[var(--acento)]"
+                  {...(esExterno(e.url) ? { target: '_blank', rel: 'noopener' } : {})}
+                >
+                  {e.etiqueta}
+                  {esExterno(e.url) && <span aria-hidden="true"> ↗</span>}
+                </a>
+              </li>
+            ))}
+          </ul>
+        )
+      }
+    </div>
+
+    <Contacto />
+
+    <nav class="mt-12" aria-labelledby="otros-casos">
+      <h2 id="otros-casos" class="text-sm font-semibold uppercase tracking-wider text-[var(--texto-suave)]">
+        Otros casos
+      </h2>
+      <ul class="mt-4 grid gap-3 sm:grid-cols-2">
+        {
+          otros.map((o) => (
+            <li>
+              <a
+                href={ruta(`/casos/${o.slug}`)}
+                class="block rounded-[var(--radius-card)] border border-[var(--borde)] bg-[var(--superficie)] p-4 no-underline hover:border-[var(--acento)]"
+              >
+                <span class="block font-semibold">{o.titulo}</span>
+                <span class="mt-1 block text-sm text-[var(--texto-suave)]">{o.bajada}</span>
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+    </nav>
+  </article>
+</Base>
+
+<style>
+  .caso h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  .caso h3 {
+    margin-top: 1.5rem;
+    font-weight: 600;
+  }
+
+  .caso section > ul {
+    margin-top: 1rem;
+    display: grid;
+    gap: 0.75rem;
+    max-width: 46rem;
+    padding-left: 1.25rem;
+    list-style: disc;
+  }
+
+  .caso section > ul li::marker {
+    color: var(--acento);
+  }
+</style>

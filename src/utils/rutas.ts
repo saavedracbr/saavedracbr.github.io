@@ -1,7 +1,7 @@
 /**
  * Rutas del sitio, independientes de dónde se sirva.
  *
- * Las páginas escriben siempre contra la raíz —`/cv`, `/casos/talento-humano`—
+ * Las páginas escriben siempre contra la raíz —`/cv`, `/casos/turnos-produccion`—
  * y estas funciones añaden el prefijo de publicación si algún día hace falta
  * servir bajo un subdirectorio. Con `base` en `/` son no-op.
  */

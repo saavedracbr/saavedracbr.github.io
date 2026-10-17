@@ -1,0 +1,225 @@
+---
+import Base from '../layouts/Base.astro';
+import { URL_DASHBOARD } from '../data/perfil.ts';
+import {
+  DASHBOARD_INCRUSTABLE,
+  URL_DASHBOARD_EMBED,
+  matricula,
+  resumenMatricula,
+  paginasDashboard,
+} from '../data/dashboard.ts';
+import { ruta } from '../utils/rutas.ts';
+
+const { inicio, pico, crecimiento } = resumenMatricula;
+const ultimo = matricula[matricula.length - 1];
+const maximo = Math.max(...matricula.map((m) => m.miles));
+const fmt = (miles: number) => miles.toFixed(1);
+
+// Desde 2021, el segundo semestre siempre queda por debajo del primero del mismo año.
+const anios = [...new Set(matricula.map((m) => m.periodo.slice(0, 4)))];
+const segundoMenor = anios
+  .filter((a) => a >= '2021')
+  .every((a) => {
+    const s1 = matricula.find((m) => m.periodo === `${a}-1`);
+    const s2 = matricula.find((m) => m.periodo === `${a}-2`);
+    return !s1 || !s2 || s2.miles < s1.miles;
+  });
+---
+
+<Base
+  titulo="Dashboard: matrícula en la U. de Lima"
+  descripcion={`Investigación propia en Data Studio: la matrícula de la U. de Lima creció ${crecimiento} % entre ${inicio.periodo} y ${pico.periodo}.`}
+>
+  <article class="mx-auto max-w-4xl px-4 pb-20 pt-10 sm:px-6 sm:pt-14">
+    <header>
+      <p class="font-mono text-eyebrow uppercase text-[var(--acento)]">Proyecto propio · Data Studio</p>
+      <h1 class="mt-3 text-4xl font-semibold tracking-tight sm:text-5xl">¿Cómo crece la U. de Lima?</h1>
+      <p class="mt-5 max-w-2xl text-lg text-[var(--texto-suave)]">
+        Reuní los datos públicos de matrícula, postulantes e ingresantes por carrera y los convertí en un dashboard de 4
+        páginas. Aquí cuento qué encontré.
+      </p>
+      <div class="mt-8 flex flex-wrap gap-3">
+        <a
+          href={URL_DASHBOARD}
+          target="_blank"
+          rel="noopener"
+          class="rounded-[var(--radius-card)] bg-[var(--acento)] px-5 py-3 font-medium text-white no-underline hover:opacity-90 dark:text-[var(--color-ink-950)]"
+          >Abrir el dashboard interactivo <span aria-hidden="true">↗</span></a
+        >
+      </div>
+      <p class="mt-3 text-sm text-[var(--texto-suave)]">
+        Hecho en Data Studio (antes Looker Studio). En computadora también lo puedes usar más abajo, sin salir de la
+        página.
+      </p>
+    </header>
+
+    <dl class="mt-12 grid gap-4 sm:grid-cols-3">
+      <div class="flex flex-col rounded-[var(--radius-card)] border border-[var(--borde)] bg-[var(--superficie)] p-5">
+        <dt class="text-sm text-[var(--texto-suave)]">crecimiento de la matrícula, {inicio.periodo} a {pico.periodo}</dt>
+        <dd class="order-first text-3xl font-semibold tracking-tight text-[var(--acento)]">+{crecimiento} %</dd>
+      </div>
+      <div class="flex flex-col rounded-[var(--radius-card)] border border-[var(--borde)] bg-[var(--superficie)] p-5">
+        <dt class="text-sm text-[var(--texto-suave)]">alumnos en {pico.periodo}, el máximo de la serie</dt>
+        <dd class="order-first text-3xl font-semibold tracking-tight text-[var(--acento)]">{fmt(pico.miles)} mil</dd>
+      </div>
+      <div class="flex flex-col rounded-[var(--radius-card)] border border-[var(--borde)] bg-[var(--superficie)] p-5">
+        <dt class="text-sm text-[var(--texto-suave)]">páginas de análisis</dt>
+        <dd class="order-first text-3xl font-semibold tracking-tight text-[var(--acento)]">{paginasDashboard.length}</dd>
+      </div>
+    </dl>
+
+    <section class="mt-14" aria-labelledby="hallazgos">
+      <h2 id="hallazgos" class="text-2xl font-semibold tracking-tight">Qué encontré</h2>
+      <ol class="hallazgos mt-5 grid gap-4">
+        <li>
+          <strong>La matrícula creció {crecimiento} % en cinco años:</strong> de {fmt(inicio.miles)} mil alumnos en {
+            inicio.periodo
+          } a {fmt(pico.miles)} mil en {pico.periodo}.
+        </li>
+        {
+          segundoMenor && (
+            <li>
+              <strong>El segundo semestre siempre queda un poco abajo.</strong> Desde 2021, cada semestre 2 tiene menos
+              alumnos que el 1 del mismo año. {ultimo.periodo} cerró con {fmt(ultimo.miles)} mil.
+            </li>
+          )
+        }
+        <li>
+          <strong>Los postulantes se concentran en el primer semestre</strong> de cada año: ahí están los picos de la
+          serie.
+        </li>
+        <li>
+          <strong>Ingeniería Industrial es la carrera con más alumnos matriculados</strong> en el periodo analizado.
+        </li>
+      </ol>
+    </section>
+
+    <figure class="mt-12 rounded-[var(--radius-card)] border border-[var(--borde)] bg-[var(--superficie)] p-5 sm:p-6">
+      <figcaption class="font-semibold">Alumnos matriculados por periodo (miles)</figcaption>
+      <table class="barras mt-5 w-full text-sm">
+        <thead class="sr-only">
+          <tr>
+            <th scope="col">Periodo</th>
+            <th scope="col">Alumnos (miles)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {
+            matricula.map((m) => (
+              <tr>
+                <th scope="row" class="w-16 py-1 pr-3 text-left font-mono font-normal text-[var(--texto-suave)]">
+                  {m.periodo}
+                </th>
+                <td class="py-1">
+                  <div class="flex items-center gap-2">
+                    <span
+                      class:list={['barra', m.periodo === pico.periodo || m.periodo === inicio.periodo ? 'destacada' : '']}
+                      style={`width: ${((m.miles / maximo) * 100).toFixed(1)}%`}
+                      aria-hidden="true"
+                    />
+                    <span class="tabular-nums">{fmt(m.miles)}</span>
+                  </div>
+                </td>
+              </tr>
+            ))
+          }
+        </tbody>
+      </table>
+      <p class="mt-4 text-sm text-[var(--texto-suave)]">Fuente: mi dashboard "Alumnado ULima", con datos públicos.</p>
+    </figure>
+
+    {
+      DASHBOARD_INCRUSTABLE && (
+        <figure class="mt-12 hidden md:block">
+          <figcaption class="font-semibold">
+            Pruébalo aquí
+            <span class="font-normal text-[var(--texto-suave)]">
+              · cambia de página con el menú de la izquierda del dashboard
+            </span>
+          </figcaption>
+          <iframe
+            src={URL_DASHBOARD_EMBED}
+            title="Dashboard Alumnado ULima en Data Studio"
+            loading="lazy"
+            allowfullscreen
+            class="mt-4 aspect-[4/3] w-full rounded-[var(--radius-card)] border border-[var(--borde)] bg-[var(--superficie)]"
+            sandbox="allow-storage-access-by-user-activation allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"
+          />
+        </figure>
+      )
+    }
+
+    <section class="mt-14" aria-labelledby="paginas">
+      <h2 id="paginas" class="text-2xl font-semibold tracking-tight">Las 4 páginas del dashboard</h2>
+      <dl class="mt-5 grid gap-3 sm:grid-cols-2">
+        {
+          paginasDashboard.map((p, i) => (
+            <div class="rounded-[var(--radius-card)] border border-[var(--borde)] bg-[var(--superficie)] p-4">
+              <dt class="font-semibold">
+                <span class="font-mono text-eyebrow text-[var(--acento)]">{String(i + 1).padStart(2, '0')}</span>{' '}
+                {p.titulo}
+              </dt>
+              <dd class="mt-1 text-sm text-[var(--texto-suave)]">{p.detalle}</dd>
+            </div>
+          ))
+        }
+      </dl>
+    </section>
+
+    <section class="mt-14" aria-labelledby="como">
+      <h2 id="como" class="text-2xl font-semibold tracking-tight">Cómo lo hice</h2>
+      <ul class="hallazgos mt-5 grid gap-3">
+        <li>Reuní las cifras públicas de cada periodo y las ordené en una sola tabla por carrera y semestre.</li>
+        <li>Separé cuatro medidas que suelen mezclarse: postulantes, ingresantes, ingresantes matriculados y alumnos matriculados.</li>
+        <li>Armé una página por pregunta, para que cualquiera lo lea sin saber de datos.</li>
+      </ul>
+      <p class="mt-6">
+        <a href={ruta('/casos/decisiones-con-datos')} class="font-medium text-[var(--acento)]"
+          >Ver el caso completo: decisiones con datos →</a
+        >
+      </p>
+    </section>
+  </article>
+</Base>
+
+<style>
+  .hallazgos {
+    padding-left: 1.25rem;
+    max-width: 46rem;
+  }
+
+  ol.hallazgos {
+    list-style: decimal;
+  }
+
+  ul.hallazgos {
+    list-style: disc;
+  }
+
+  .hallazgos li::marker {
+    color: var(--acento);
+    font-weight: 600;
+  }
+
+  .barra {
+    display: block;
+    height: 0.9rem;
+    min-width: 2px;
+    border-radius: 2px;
+    background: var(--color-acero-200);
+  }
+
+  .barra.destacada {
+    background: var(--acento);
+  }
+
+  :global([data-theme='dark']) .barra:not(.destacada) {
+    background: var(--color-acero-800);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :global(:root:not([data-theme='light'])) .barra:not(.destacada) {
+      background: var(--color-acero-800);
+    }
+  }
+</style>

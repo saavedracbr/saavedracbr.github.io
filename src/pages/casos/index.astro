@@ -1,0 +1,24 @@
+---
+import Base from '../../layouts/Base.astro';
+import TarjetaCaso from '../../components/TarjetaCaso.astro';
+import { casos } from '../../data/casos.ts';
+---
+
+<Base
+  titulo="Casos"
+  descripcion="Procesos que llevé del Excel y el papel a un sistema: turnos de producción, del huellero a la planilla, del RUC a la factura, del pedido al despacho y decisiones con datos."
+>
+  <section class="mx-auto max-w-5xl px-4 pb-20 pt-12 sm:px-6 sm:pt-16">
+    <p class="font-mono text-eyebrow uppercase text-[var(--acento)]">Casos</p>
+    <h1 class="mt-3 max-w-3xl text-4xl font-semibold tracking-tight sm:text-5xl">
+      Procesos reales, contados de principio a fin
+    </h1>
+    <p class="mt-5 max-w-2xl text-lg text-[var(--texto-suave)]">
+      Cada caso sigue el mismo orden: el problema, lo que hice y el resultado. Lo que todavía no puedo medir lo digo
+      tal cual.
+    </p>
+    <ul class="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {casos.map((caso) => <TarjetaCaso caso={caso} nivel="h2" />)}
+    </ul>
+  </section>
+</Base>

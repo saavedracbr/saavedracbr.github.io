@@ -8,6 +8,8 @@
  * - Siempre "Estudiante de Ingeniería Industrial", nunca "Ingeniero".
  * - El código es evidencia, no el titular.
  * - De BBA se nombra la empresa, pero las demos usan datos ficticios.
+ * - El partner externo que tuvo BBA no se nombra, y no se publican detalles de
+ *   seguridad ni de la red de la planta.
  * - Lo que no está verificado no entra aquí.
  */
 
@@ -23,6 +25,8 @@ export interface Rol {
   /** `null` mientras el rol siga vigente. */
   hasta: string | null;
   logros: string[];
+  /** Dónde ver el detalle, al pie del rol en el CV. */
+  enlace?: Enlace;
 }
 
 export interface Experiencia {
@@ -62,6 +66,14 @@ export interface Pilar {
   evidencia: string[];
 }
 
+export interface GrupoHabilidades {
+  grupo: string;
+  /** Salen en el CV, en este orden. */
+  items: string[];
+  /** Solo en LinkedIn y la web: el CV no tiene espacio para todo. */
+  ampliado: string[];
+}
+
 export const persona = {
   nombre: 'Bruno Saavedra Carbajal',
   nombreCorto: 'Bruno Saavedra',
@@ -80,27 +92,37 @@ export const oferta = {
   frase:
     'Digitalizo operaciones: llevo procesos de planta y de back-office del Excel y el papel a ERP, automatización y datos.',
   busqueda:
-    'Busco prácticas preprofesionales en mejora continua y procesos, planeamiento y supply chain, o analítica de operaciones.',
+    'Busco prácticas preprofesionales en mejora continua y procesos, transformación digital y ERP, planeamiento y supply chain, o analítica de operaciones.',
   /** Resumen de tres líneas para la cabecera del CV (el título ya va en la cabecera). */
   resumenCv:
-    'Digitalizo operaciones: llevo procesos de planta y de back-office del Excel y el papel a ERP, automatización y datos. Lidero la implementación de Odoo en una planta de material POP y packaging (23 módulos a medida) y vengo de ventas B2B con multinacionales, así que veo el proceso desde el sistema y desde el cliente.',
+    'Digitalizo operaciones: llevo procesos de planta y de back-office del Excel y el papel a ERP, automatización y datos. Desde 2023 lidero el ERP Odoo de una planta de POP y packaging: lo migré de Odoo 17 a 19 y suma 23 módulos propios en producción. Vengo de ventas B2B: veo el proceso desde el sistema y desde el cliente.',
   rolesObjetivo: [
-    'Mejora continua / Procesos / Transformación',
+    'Mejora continua / Procesos / Transformación digital y consultoría ERP',
     'Planeamiento / Supply chain / Compras',
     'Data / BI en operaciones',
   ],
+} as const;
+
+/** Cifras del ERP de BBA que se pueden publicar: todas verificadas. */
+export const cifrasErp = {
+  modulos: 23,
+  procesos: 4,
+  usuarios: '15+',
+  colaboradores: '100+',
+  versionDesde: 17,
+  versionHasta: 19,
 } as const;
 
 export const pilares: Pilar[] = [
   {
     titulo: 'De proceso a sistema',
     frase: 'Levanto el proceso con quienes lo hacen, lo rediseño y lo llevo a un sistema que la gente adopta.',
-    evidencia: ['ERP Odoo en BBA Pack', 'Capacitación del personal', 'Certificados UNI de procesos y SIG'],
+    evidencia: ['ERP Odoo: 23 módulos en producción', 'Migración de Odoo 17 a 19', 'Certificados UNI de procesos y SIG'],
   },
   {
     titulo: 'Automatización e integración',
-    frase: 'Conecto equipos, sistemas y entidades para quitar trabajo manual.',
-    evidencia: ['Biométrico → ERP → planilla', 'Facturación electrónica SUNAT', 'Control guía↔factura'],
+    frase: 'Conecto equipos, sistemas y entidades para quitar trabajo manual. Construyo con IA como copiloto.',
+    evidencia: ['Huellero → ERP → planilla PLAME', 'Facturación y guías SUNAT', 'Control guía↔factura', 'Claude Code'],
   },
   {
     titulo: 'Datos para decidir',
@@ -126,11 +148,13 @@ export const experiencia: Experiencia[] = [
         desde: 'dic. 2023',
         hasta: null,
         logros: [
-          'Lidero la implementación de Odoo 19 (ERP) en planta: levantamiento de procesos, diseño de la solución, 23 módulos a medida, pruebas y capacitación. Hoy lo usan más de 15 usuarios internos.',
-          'Talento Humano (en piloto, para más de 100 colaboradores): conecté el biométrico ZKTeco con el ERP y diseñé un respaldo con Raspberry Pi y batería de 12 V para no perder marcas en los apagones. Los turnos rotativos pasan del Excel al sistema y las asistencias alimentarán la planilla PLAME.',
-          'Facturación electrónica SUNAT desde el ERP (guías de remisión, comprobantes, retenciones y detracciones) y un control que cruza cada guía con su factura para que ningún despacho quede sin facturar.',
-          'Presenté el proyecto a la Gerencia General y capacité al personal administrativo y operativo.',
+          'Lidero el ERP Odoo de la planta: de automatizaciones en Studio a 23 módulos propios en producción, con más de 15 usuarios. En 2026, al salir el partner externo, reconstruí las personalizaciones y migré de Odoo 17 a 19.',
+          'Talento Humano (en piloto, más de 100 colaboradores): llevé del Excel al ERP la hoja diaria de turnos por equipo, proceso y estación; integré en tiempo real los biométricos ZKTeco, con un respaldo en Raspberry Pi para no perder marcas en los apagones; y la nómina genera los archivos de la PLAME para SUNAT.',
+          'Facturación SUNAT de punta a punta: clientes validados por API, factura 1:1 desde la guía de remisión, retenciones y detracciones automáticas y un control guía↔factura para que ningún despacho quede sin facturar.',
+          'Trazabilidad del pedido al despacho: fecha de entrega por línea, la orden de compra del cliente en cada orden de producción y albarán, reporte de producción pendiente y bloqueo del stock negativo.',
+          'Levanto cada proceso con sus usuarios, lo pruebo en un entorno aparte antes de producción y capacito al personal; presenté el proyecto a la Gerencia General. Construyo con IA (Claude Code) como copiloto.',
         ],
+        enlace: { etiqueta: 'saavedracbr.com/erp', url: 'https://saavedracbr.com/erp' },
       },
       {
         cargo: 'Ejecutivo de Ventas Corporativas B2B',
@@ -162,23 +186,15 @@ export const educacion = {
 export const URL_DASHBOARD =
   'https://datastudio.google.com/reporting/6b1bf0ae-b8a9-4ca6-bb0a-421d744cdee5';
 
+/** Los del CV. El trabajo en BBA no va aquí: ya está en Experiencia y en /erp. */
 export const proyectos: Proyecto[] = [
-  {
-    slug: 'portafolio-demos',
-    nombre: 'Demos interactivas de procesos digitalizados',
-    contexto: 'Portafolio personal',
-    resumen:
-      'Explico con demos que cualquiera puede probar, y con datos ficticios, los procesos que llevé al ERP: turnos de planta sin Excel, del huellero a la planilla y control guía↔factura.',
-    herramientas: ['Astro', 'TypeScript'],
-    enlace: { etiqueta: 'saavedracbr.com/demos', url: 'https://saavedracbr.com/demos' },
-  },
   {
     slug: 'dashboard-matricula',
     nombre: 'Dashboard de matrícula en la U. de Lima',
     contexto: 'Investigación de mercado propia',
     resumen:
-      'Recopilé y organicé datos de matrícula, postulantes e ingresantes por carrera en un dashboard de 4 páginas: evolución histórica, visión por carrera y participación por periodo.',
-    herramientas: ['Looker Studio'],
+      'Matrícula, postulantes e ingresantes por carrera desde 2020, en un dashboard de 4 páginas.',
+    herramientas: ['Data Studio'],
     enlace: { etiqueta: 'Ver dashboard', url: URL_DASHBOARD },
   },
   {
@@ -186,7 +202,7 @@ export const proyectos: Proyecto[] = [
     nombre: 'Modelo de decisiones para Business Strategy Game',
     contexto: 'Curso, U. de Lima',
     resumen:
-      'Modelo de pronóstico de demanda y evaluación de decisiones de precio, producción y capacidad. Con backtesting sobre rondas anteriores, el error de pronóstico (WAPE) bajó de 31.8 % a 17.0 %.',
+      'Pronóstico de demanda para decidir precio y capacidad; en backtesting, el error (WAPE) bajó de 31.8 % a 17.0 %.',
     herramientas: ['Python'],
   },
 ];
@@ -264,23 +280,70 @@ export const certificados: Certificado[] = [
   },
 ];
 
-/** Sin SAP ni Power BI: no se ponen hasta tener una pieza que lo pruebe. */
-export const habilidades = [
+/**
+ * Cada habilidad tiene detrás un módulo del ERP, un proyecto o un certificado.
+ * Sin SAP ni Power BI: no se ponen hasta tener una pieza que lo pruebe.
+ */
+export const habilidades: GrupoHabilidades[] = [
   {
     grupo: 'Procesos y operaciones',
     items: [
       'Mapeo y mejora de procesos',
-      'Implementación de ERP (Odoo)',
-      'KPIs',
+      'Implementación de ERP',
       'Planificación de turnos y producción',
+      'Control de inventario',
+      'KPIs',
       'Gestión del cambio y capacitación',
+    ],
+    ampliado: [
+      'Levantamiento de requerimientos',
+      'Gestión de proyectos',
+      'Gestión de proveedores',
+      'Order-to-cash',
+      'Fabricación contra pedido (make-to-order)',
+      'Control interno despacho–factura',
+      'Turnos rotativos y nocturnos',
+      'Trazabilidad de pedidos',
     ],
   },
   {
-    grupo: 'Datos y herramientas',
-    items: ['Excel', 'SQL', 'Python', 'Looker Studio', 'Google Analytics 4', 'Git', 'IA generativa (Claude)'],
+    grupo: 'Normativa Perú',
+    items: [
+      'Facturación electrónica y GRE (SUNAT)',
+      'Detracciones y retenciones del IGV',
+      'PLAME (PDT 0601)',
+    ],
+    ampliado: [
+      'Planilla Electrónica (tablas paramétricas)',
+      'Consulta RUC y estado de comprobantes',
+      'Rentas de 5.ª categoría',
+      'Notas de crédito y débito',
+    ],
   },
-] as const;
+  {
+    grupo: 'ERP y tecnología',
+    items: [
+      'Odoo 17–19 (Studio, módulos a medida, migración)',
+      'Integración con APIs y biométricos',
+      'Excel',
+      'SQL',
+      'Python',
+      'Data Studio',
+      'Google Analytics 4',
+      'Git',
+      'IA generativa (Claude Code)',
+    ],
+    ampliado: [
+      'Odoo: Ventas, CRM, Inventario, Fabricación, Contabilidad, Asistencias, Planificación y Nómina',
+      'Odoo.sh (desarrollo, pruebas y producción)',
+      'Reportes PDF a medida',
+      'Pruebas automatizadas',
+      'Docker',
+      'Raspberry Pi y Linux',
+      'Biométricos ZKTeco',
+    ],
+  },
+];
 
 export const idiomas = [
   { idioma: 'Español', nivel: 'Nativo' },

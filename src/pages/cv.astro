@@ -127,6 +127,11 @@ const contacto = [
                       <li>{logro}</li>
                     ))}
                   </ul>
+                  {rol.enlace && (
+                    <p class="detalle-rol">
+                      Detalle por proceso: <a href={rol.enlace.url}>{rol.enlace.etiqueta}</a>
+                    </p>
+                  )}
                 </div>
               ))}
             </div>
@@ -405,6 +410,16 @@ const contacto = [
 
       .rol li::marker {
         color: var(--acento);
+      }
+
+      .detalle-rol {
+        margin-top: 0.8mm !important;
+        padding-left: 4.2mm;
+        color: var(--suave);
+      }
+
+      .detalle-rol a {
+        color: var(--acento) !important;
       }
 
       .proyectos,
