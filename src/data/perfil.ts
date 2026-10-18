@@ -179,7 +179,7 @@ export const educacion = {
   cursos: [
     'Procesos Industriales',
     'Sostenibilidad Industrial (estrategia ESG en Company Game)',
-    'Simuladores de negocio: Business Strategy Game y The Fresh Connection',
+    'Juego de Negocios (Business Strategy Game y The Fresh Connection)',
   ],
 } as const;
 
@@ -200,7 +200,8 @@ export const proyectos: Proyecto[] = [
   {
     slug: 'bsg-optimizer',
     nombre: 'Modelo de decisiones para Business Strategy Game',
-    contexto: 'Curso, U. de Lima',
+    /** Iniciativa propia: el curso no pedía ni enseñaba el modelo. */
+    contexto: 'Proyecto propio (curso Juego de Negocios)',
     resumen:
       'Pronóstico de demanda para decidir precio y capacidad; en backtesting, el error (WAPE) bajó de 31.8 % a 17.0 %.',
     herramientas: ['Python'],
