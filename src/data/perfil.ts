@@ -176,10 +176,14 @@ export const educacion = {
   /** `null` muestra "Pregrado en curso" en el CV. Actualizar al cambiar de ciclo. */
   ciclo: '8.º' as string | null,
   egresoEstimado: 'dic. 2027' as string | null,
-  cursos: [
-    'Procesos Industriales',
-    'Sostenibilidad Industrial (estrategia ESG en Company Game)',
+  /** Solo electivos: los obligatorios de la malla los lleva toda la carrera. Ordenados por relevancia. */
+  electivos: [
     'Juego de Negocios (Business Strategy Game y The Fresh Connection)',
+    'Sostenibilidad Industrial (estrategia ESG en Company Game)',
+    'Metodologías Ágiles',
+    'Gerencia B2B',
+    'Herramientas de Marketing Digital',
+    'Taller de Liderazgo',
   ],
 } as const;
 
