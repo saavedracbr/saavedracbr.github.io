@@ -22,6 +22,7 @@ import {
   certificados,
   habilidades,
   idiomas,
+  actividades,
 } from '../data/perfil.ts';
 import { GA4_ID, urlConUtm, type Canal } from '../data/medicion.ts';
 import { ruta, urlAbsoluta, urlVisible } from '../utils/rutas.ts';
@@ -45,6 +46,8 @@ const proyectosCv = proyectos.filter((p) => p.enCv);
 const urlsCertificados = new Set(certificadosCv.map((c) => c.url));
 const anio = (fecha: string | null) => fecha?.split(' ').at(-1);
 const electivosCv = educacion.electivos.map((e) => (e.detalle ? `${e.nombre} (${e.detalle})` : e.nombre));
+// Un solo renglón dentro de Educación: un encabezado propio no cabría en la hoja.
+const actividadesCv = actividades.filter((a) => a.enCv).map((a) => a.nombreCv ?? a.nombre);
 const estadoEstudios = [
   educacion.ciclo ? `${educacion.ciclo} ciclo` : 'Pregrado en curso',
   educacion.egresoEstimado && `egreso estimado: ${educacion.egresoEstimado}`,
@@ -119,6 +122,7 @@ const contacto = [
           <p class="fecha">{estadoEstudios}</p>
         </div>
         <p class="detalle">Cursos electivos: {electivosCv.join(' · ')}.</p>
+        {actividadesCv.length > 0 && <p class="detalle">Actividades: {actividadesCv.join(' · ')}.</p>}
       </section>
 
       <section>
@@ -381,7 +385,7 @@ const contacto = [
       }
 
       section {
-        margin-top: 3mm;
+        margin-top: 2.8mm;
       }
 
       h2 {

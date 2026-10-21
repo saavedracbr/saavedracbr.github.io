@@ -73,8 +73,11 @@ export interface Actividad {
   nombre: string;
   detalle: string;
   fecha?: string;
+  /** Externa (constancia verificable) o del sitio (`/certificados/…`). */
   url?: string;
   enCv: boolean;
+  /** Texto en la línea "Actividades" del CV, que tiene que caber en un renglón. */
+  nombreCv?: string;
 }
 
 export interface Certificado {
@@ -414,23 +417,45 @@ export const proyectos: Proyecto[] = [
   },
 ];
 
-/** Círculos y congresos. Next-Gen no va. */
+/**
+ * Círculos y congresos. Next-Gen no va. En el de Gestión de Proyectos estuvo
+ * por periodos; cuenta solo oct.–nov. 2025, cuando fue con el círculo al CONCEPMI.
+ * El certificado del CONCEPMI no tiene URL pública (su QR solo trae el código),
+ * así que el PDF va en el sitio.
+ */
 export const actividades: Actividad[] = [
-  { nombre: 'Círculo de Gestión de Proyectos', detalle: 'U. de Lima · miembro', enCv: true },
-  { nombre: 'Círculo Trends & Innovation Marketing', detalle: 'U. de Lima · miembro', enCv: false },
-  { nombre: 'Círculo Inteligencia de Datos en Marketing', detalle: 'U. de Lima · miembro', enCv: false },
+  {
+    nombre: 'Círculo de Gestión de Proyectos',
+    detalle: 'U. de Lima, carrera de Ingeniería de Sistemas · miembro',
+    fecha: 'oct.–nov. 2025',
+    enCv: true,
+    nombreCv: 'Círculo de Gestión de Proyectos y V CONCEPMI 2025 del PMI',
+  },
+  {
+    nombre: 'Círculo Trends & Innovation Marketing',
+    detalle: 'U. de Lima · miembro',
+    fecha: 'desde sep. 2026',
+    enCv: false,
+  },
+  {
+    nombre: 'Círculo Inteligencia de Datos en Marketing',
+    detalle: 'U. de Lima · miembro',
+    fecha: 'desde oct. 2026',
+    enCv: false,
+  },
   {
     nombre: 'V CONCEPMI 2025, del PMI',
-    detalle: 'En la delegación de la U. de Lima · 20 h',
+    detalle: 'Con el círculo, en la delegación de la U. de Lima · 20 h',
     fecha: '15–16 nov. 2025',
-    enCv: true,
+    url: '/certificados/concepmi-2025.pdf',
+    enCv: false,
   },
   {
     nombre: 'IV Congreso Internacional de Ingeniería Industrial',
     detalle: 'U. de Lima · 12 h',
     fecha: '29–30 oct. 2025',
     url: 'https://v.ulima.pe/446405c42efe4937.pdf',
-    enCv: true,
+    enCv: false,
   },
   {
     nombre: 'V Congreso Internacional de Ingeniería Industrial',
@@ -438,6 +463,7 @@ export const actividades: Actividad[] = [
     fecha: '1–2 sep. 2026',
     url: 'https://v.ulima.pe/814a827b74482a16.pdf',
     enCv: true,
+    nombreCv: 'Congresos de Ingeniería Industrial 2025 y 2026',
   },
 ];
 

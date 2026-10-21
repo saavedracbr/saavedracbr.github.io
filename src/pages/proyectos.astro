@@ -131,8 +131,13 @@ const esExterno = (url: string) => /^https?:\/\//.test(url);
           actividades.map((a) => (
             <li class="rounded-[var(--radius-card)] border border-[var(--borde)] bg-[var(--superficie)] p-4">
               <p class="font-semibold leading-snug">
-                {a.url && esExterno(a.url) ? (
-                  <a href={a.url} target="_blank" rel="noopener" class="hover:text-[var(--acento)]">
+                {a.url ? (
+                  <a
+                    href={ruta(a.url)}
+                    target="_blank"
+                    rel={esExterno(a.url) ? 'noopener' : undefined}
+                    class="hover:text-[var(--acento)]"
+                  >
                     {a.nombre} <span aria-hidden="true">↗</span>
                   </a>
                 ) : (
