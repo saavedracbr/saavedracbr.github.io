@@ -42,6 +42,8 @@ function buscarNavegador() {
 function imprimir(navegador, url, salida) {
   // Perfil temporal: no toca el perfil del usuario ni choca con un Edge abierto.
   const perfil = mkdtempSync(join(tmpdir(), 'cv-pdf-'));
+  // Sin el PDF anterior: si el navegador no escribe, el chequeo de abajo falla en vez de aprobar la copia vieja.
+  rmSync(salida, { force: true });
   const args = [
     '--headless=new',
     '--disable-gpu',

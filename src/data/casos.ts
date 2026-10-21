@@ -297,9 +297,9 @@ export const casos: Caso[] = [
     contexto: 'Universidad de Lima · cursos y proyecto propio',
     estado: 'Académico y propio',
     paraRol: 'Analítica, BI y planeamiento de la demanda',
-    herramientas: ['Python', 'Data Studio', 'Business Strategy Game', 'The Fresh Connection'],
+    herramientas: ['Python', 'XGBoost', 'Data Studio', 'ERPsim (SAP)', 'Business Strategy Game', 'The Fresh Connection'],
     cifras: [
-      { valor: '31.8 % → 17.0 %', etiqueta: 'error de pronóstico (WAPE) de mi modelo' },
+      { valor: '31.8 % → 17.0 %', etiqueta: 'error en utilidad neta de mi réplica del BSG, al corregir el modelo de costos' },
       {
         valor: `+${resumenMatricula.crecimiento} %`,
         etiqueta: `matrícula de la U. de Lima, ${resumenMatricula.inicio.periodo} a ${resumenMatricula.pico.periodo}`,
@@ -310,13 +310,15 @@ export const casos: Caso[] = [
       'Quería saber cómo evoluciona la matrícula de la U. de Lima y qué carreras pesan más, y no había una vista que lo mostrara de un vistazo.',
     ],
     solucion: [
-      'Business Strategy Game: construí en Python un modelo que pronostica la demanda y evalúa decisiones de precio, producción y capacidad antes de enviarlas. Lo validé con backtesting sobre rondas anteriores.',
-      'The Fresh Connection: simulación de una cadena de suministro completa, en la que compras, operaciones, supply chain y ventas deciden en equipo.',
+      'Business Strategy Game (electivo Juego de Negocios): por mi cuenta construí en Python una réplica del simulador. Lee los reportes del juego, simula cada año y evalúa decisiones de precio, producción y capacidad antes de enviarlas. La validé con backtesting de 8 años.',
+      'ERPsim (electivo Juego de Negocios), un simulador que corre sobre SAP: por mi cuenta construí en Python un motor que pronostica la demanda con XGBoost y decide la reposición a 3 regiones.',
+      'The Fresh Connection, del curso Modelos de Sistemas Logísticos: simulación de una cadena de suministro completa, en la que compras, operaciones, supply chain y ventas deciden en equipo. Mi rol fue Supply Chain.',
       'Dashboard de matrícula: reuní datos públicos de matrícula, postulantes e ingresantes por carrera y los convertí en un dashboard de 4 páginas.',
     ],
     diagramas: [],
     resultado: [
-      'El error de pronóstico (WAPE) bajó de 31.8 % a 17.0 %: de cada 100 unidades, el modelo pasó de desviarse en unas 32 a desviarse en 17.',
+      'La réplica del BSG reproduce 8 años con 7 % de error en ingresos netos; el error en utilidad neta bajó de 31.8 % a 17.0 % al corregir el modelo de costos.',
+      'El motor de ERPsim entrega la tabla de traslados lista para cargar en SAP.',
       'Certificado de The Fresh Connection, emitido por Inchainge (junio de 2026).',
       'Un dashboard público que cualquiera abre con un enlace.',
     ],

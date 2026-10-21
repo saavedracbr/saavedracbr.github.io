@@ -127,7 +127,7 @@ export const pilares: Pilar[] = [
   {
     titulo: 'Datos para decidir',
     frase: 'Convierto datos en indicadores y decisiones.',
-    evidencia: ['Dashboard de matrícula U. de Lima', 'Modelo de pronóstico BSG', 'EDA, Big Data y Google Analytics'],
+    evidencia: ['Dashboard de matrícula U. de Lima', 'Réplica del BSG', 'EDA, Big Data y Google Analytics'],
   },
   {
     titulo: 'Visión de negocio y cliente',
@@ -144,7 +144,7 @@ export const experiencia: Experiencia[] = [
     roles: [
       {
         cargo: 'ERP Project Manager',
-        modalidad: 'Por proyecto desde 2026',
+        modalidad: 'Freelance desde may. 2026',
         desde: 'dic. 2023',
         hasta: null,
         logros: [
@@ -158,7 +158,7 @@ export const experiencia: Experiencia[] = [
       },
       {
         cargo: 'Ejecutivo de Ventas Corporativas B2B',
-        modalidad: 'Jornada completa',
+        modalidad: 'Jornada parcial',
         desde: 'mar. 2025',
         hasta: 'abr. 2026',
         logros: [
@@ -178,7 +178,7 @@ export const educacion = {
   egresoEstimado: 'dic. 2027' as string | null,
   /** Solo electivos: los obligatorios de la malla los lleva toda la carrera. Ordenados por relevancia. */
   electivos: [
-    'Juego de Negocios (Business Strategy Game y The Fresh Connection)',
+    'Juego de Negocios (ERPsim y Business Strategy Game)',
     'Sostenibilidad Industrial (estrategia ESG en Company Game)',
     'Metodologías Ágiles',
     'Gerencia B2B',
@@ -205,9 +205,9 @@ export const proyectos: Proyecto[] = [
     slug: 'bsg-optimizer',
     nombre: 'Modelo de decisiones para Business Strategy Game',
     /** Iniciativa propia: el curso no pedía ni enseñaba el modelo. */
-    contexto: 'Proyecto propio (curso Juego de Negocios)',
+    contexto: 'Proyecto propio (electivo Juego de Negocios)',
     resumen:
-      'Pronóstico de demanda para decidir precio y capacidad; en backtesting, el error (WAPE) bajó de 31.8 % a 17.0 %.',
+      'Réplica del simulador: reproduce 8 años con 7 % de error en ingresos netos; el error en utilidad neta bajó de 31.8 % a 17.0 % al corregir el modelo de costos.',
     herramientas: ['Python'],
   },
 ];
@@ -355,7 +355,8 @@ export const habilidades: GrupoHabilidades[] = [
   },
 ];
 
+/** El nivel se muestra tal cual. Inglés: B2, nunca C1 (el Duolingo Score no es una certificación). */
 export const idiomas = [
-  { idioma: 'Español', nivel: 'Nativo' },
-  { idioma: 'Inglés', nivel: 'Intermedio' },
+  { idioma: 'Español', nivel: 'nativo' },
+  { idioma: 'Inglés', nivel: 'B2, Duolingo Score 128/160, oct. 2026' },
 ] as const;
