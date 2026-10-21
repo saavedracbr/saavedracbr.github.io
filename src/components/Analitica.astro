@@ -21,7 +21,8 @@ const activa = GA4_ID !== null && import.meta.env.PROD;
           window.dataLayer.push(arguments);
         };
         window.gtag('js', new Date());
-        window.gtag('config', id);
+        // Solo medición: sin las señales de Google ni la personalización de anuncios.
+        window.gtag('config', id, { allow_google_signals: false, allow_ad_personalization_signals: false });
         const etiqueta = document.createElement('script');
         etiqueta.async = true;
         etiqueta.src = `https://www.googletagmanager.com/gtag/js?id=${id}`;
