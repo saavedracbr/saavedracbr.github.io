@@ -2,14 +2,12 @@
  * Casos del portafolio: problema → lo que hice → resultado.
  *
  * Los cuatro primeros son los procesos del ERP de BBA (ver `erp.ts`); el último
- * reúne el trabajo con datos de la universidad y el dashboard propio.
+ * cuenta los dos motores propios del electivo Juego de Negocios.
  * Mismas reglas que `perfil.ts`: nada que no esté verificado, "en piloto"
  * mientras lo esté, y ningún dato de la red ni de personas reales de BBA.
  * Las métricas que aún no existen van en `porMedir`, no se inventan.
  */
 import type { Enlace } from './perfil.ts';
-import { certificados } from './perfil.ts';
-import { resumenMatricula } from './dashboard.ts';
 
 export interface Paso {
   titulo: string;
@@ -50,7 +48,6 @@ export interface Caso {
   enlaces: Enlace[];
 }
 
-const tfc = certificados.find((c) => c.nombre === 'The Fresh Connection');
 const contextoBba = 'BBA Pack · ERP Project Manager';
 const verErp: Enlace = { etiqueta: 'El ERP completo, proceso por proceso', url: '/erp' };
 
@@ -291,41 +288,62 @@ export const casos: Caso[] = [
     enlaces: [verErp],
   },
   {
-    slug: 'decisiones-con-datos',
-    titulo: 'Decisiones con datos',
-    bajada: 'Pronósticos, supply chain y un dashboard propio: cómo convierto datos en decisiones.',
-    contexto: 'Universidad de Lima · cursos y proyecto propio',
-    estado: 'Académico y propio',
-    paraRol: 'Analítica, BI y planeamiento de la demanda',
-    herramientas: ['Python', 'XGBoost', 'Data Studio', 'ERPsim (SAP)', 'Business Strategy Game', 'The Fresh Connection'],
+    slug: 'juego-de-negocios',
+    titulo: 'Juego de Negocios: dos simuladores, dos motores propios',
+    bajada:
+      'Por mi cuenta construí un motor para cada simulador del curso: uno sobre SAP (ERPsim) y una réplica del Business Strategy Game.',
+    contexto: 'U. de Lima · electivo de 9.º nivel, llevado en 7.º ciclo · proyecto propio',
+    estado: 'Proyecto propio',
+    paraRol: 'Planeamiento, supply chain y analítica',
+    herramientas: ['Python', 'XGBoost', 'SAP S/4HANA (ERPsim)', 'Google Colab', 'Business Strategy Game'],
     cifras: [
-      { valor: '31.8 % → 17.0 %', etiqueta: 'error en utilidad neta de mi réplica del BSG, al corregir el modelo de costos' },
-      {
-        valor: `+${resumenMatricula.crecimiento} %`,
-        etiqueta: `matrícula de la U. de Lima, ${resumenMatricula.inicio.periodo} a ${resumenMatricula.pico.periodo}`,
-      },
+      { valor: '7 %', etiqueta: 'error en ingresos netos de la réplica del BSG, en 8 años' },
+      { valor: '31.8 % → 17.0 %', etiqueta: 'error en utilidad neta, al corregir el modelo de costos' },
     ],
     problema: [
-      'En los simuladores de negocio, cada ronda obliga a decidir precio, producción y capacidad con información incompleta. Decidir a ojo sale caro.',
-      'Quería saber cómo evoluciona la matrícula de la U. de Lima y qué carreras pesan más, y no había una vista que lo mostrara de un vistazo.',
+      'En el electivo Juego de Negocios se dirige una empresa en dos simuladores: ERPsim, que corre sobre SAP, y el Business Strategy Game (BSG). Cada ronda obliga a decidir con información incompleta, y decidir a ojo sale caro.',
+      'En ERPsim, una empresa de muesli compra, produce y distribuye a 3 regiones. Hay que decidir cuánto mandar a cada una sin quedarse sin stock ni llenar el almacén, y un envío pequeño puede costar más en flete de lo que deja.',
+      'En el BSG, las decisiones de precio, producción y capacidad se envían sin saber cómo van a mover los resultados del año.',
     ],
     solucion: [
-      'Business Strategy Game (electivo Juego de Negocios): por mi cuenta construí en Python una réplica del simulador. Lee los reportes del juego, simula cada año y evalúa decisiones de precio, producción y capacidad antes de enviarlas. La validé con backtesting de 8 años.',
-      'ERPsim (electivo Juego de Negocios), un simulador que corre sobre SAP: por mi cuenta construí en Python un motor que pronostica la demanda con XGBoost y decide la reposición a 3 regiones.',
-      'The Fresh Connection, del curso Modelos de Sistemas Logísticos: simulación de una cadena de suministro completa, en la que compras, operaciones, supply chain y ventas deciden en equipo. Mi rol fue Supply Chain.',
-      'Dashboard de matrícula: reuní datos públicos de matrícula, postulantes e ingresantes por carrera y los convertí en un dashboard de 4 páginas.',
+      'El curso no pedía ninguno de los dos motores: los construí por mi cuenta, en Python.',
+      'Para ERPsim, en Google Colab: el motor lee los datos del juego por OData y un modelo XGBoost pronostica la demanda diaria por producto y región, según el precio y el marketing.',
+      'Con ese pronóstico fija un inventario objetivo de 5 días de cobertura más un margen por el error del pronóstico, atiende primero a las regiones que se quedaron sin stock y respeta la capacidad de cada almacén.',
+      'Calcula el costo real de cada producto desde su receta y revisa si cada envío paga su flete. El resultado sale como la tabla que se carga en la transacción de traslados de SAP.',
+      'Para el BSG, una réplica del simulador: lee los reportes del juego, simula cada año y evalúa decisiones de precio, producción y capacidad antes de enviarlas.',
+      'La validé con backtesting de 8 años contra los resultados reales del juego. Al revisar el modelo de costos encontré defectos que se compensaban entre sí, y los corregí.',
     ],
-    diagramas: [],
+    diagramas: [
+      {
+        titulo: 'El motor para ERPsim',
+        tipo: 'flujo',
+        pasos: [
+          { titulo: 'Datos del juego', detalle: 'Ventas, precios y stock, leídos por OData.' },
+          { titulo: 'Pronóstico', detalle: 'XGBoost, por producto y región.' },
+          { titulo: 'Inventario objetivo', detalle: '5 días de cobertura más un margen.' },
+          { titulo: 'Prioridad y capacidad', detalle: 'Primero las regiones sin stock, hasta el tope del almacén.' },
+          { titulo: '¿Paga el flete?', detalle: 'Cada envío se compara con lo que cuesta mandarlo.' },
+          { titulo: 'Tabla para SAP', detalle: 'Los traslados, listos para cargar.' },
+        ],
+      },
+      {
+        titulo: 'La réplica del BSG',
+        tipo: 'flujo',
+        pasos: [
+          { titulo: 'Reportes del juego', detalle: 'Los resultados de cada año.' },
+          { titulo: 'Réplica en Python', detalle: 'Simula el año con las decisiones tomadas.' },
+          { titulo: 'Backtesting de 8 años', detalle: 'Lo simulado contra lo real.' },
+          { titulo: 'Corregir defectos', detalle: 'Los que se compensaban entre sí.' },
+        ],
+      },
+    ],
     resultado: [
       'La réplica del BSG reproduce 8 años con 7 % de error en ingresos netos; el error en utilidad neta bajó de 31.8 % a 17.0 % al corregir el modelo de costos.',
+      'Al corregir defectos que se compensaban, el error subió antes de bajar: preferí un modelo honesto a una cifra bonita.',
       'El motor de ERPsim entrega la tabla de traslados lista para cargar en SAP.',
-      'Certificado de The Fresh Connection, emitido por Inchainge (junio de 2026).',
-      'Un dashboard público que cualquiera abre con un enlace.',
     ],
     porMedir: [],
-    enlaces: [
-      { etiqueta: 'Ver la página del dashboard', url: '/dashboard' },
-      ...(tfc?.url ? [{ etiqueta: 'Certificado de The Fresh Connection', url: tfc.url }] : []),
-    ],
+    // El Colab se enlaza cuando ya no tenga credenciales en el código.
+    enlaces: [{ etiqueta: 'Más proyectos: supply chain, producto y automatización', url: '/proyectos' }],
   },
 ];

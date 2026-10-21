@@ -1,0 +1,151 @@
+---
+import Base from '../layouts/Base.astro';
+import Contacto from '../components/Contacto.astro';
+import TarjetaProyecto from '../components/TarjetaProyecto.astro';
+import { proyectos, educacion, actividades, type Proyecto } from '../data/perfil.ts';
+import { ruta } from '../utils/rutas.ts';
+
+// Todo lo que no es el ERP de BBA: dos grupos en tarjetas, el resto en una línea
+// cada uno, y después los electivos y las actividades.
+const grupos: { id: Proyecto['grupo']; titulo: string; bajada: string }[] = [
+  {
+    id: 'supply',
+    titulo: 'Supply chain y simuladores',
+    bajada: 'Dos cursos con simuladores de negocio, y lo que construí por mi cuenta para decidir mejor en ellos.',
+  },
+  {
+    id: 'producto',
+    titulo: 'Producto propio',
+    bajada: 'ULiManager, una app para universitarios que está en alfa, y la investigación de mercado que la sostiene.',
+  },
+];
+const deGrupo = (grupo: Proyecto['grupo']) => proyectos.filter((p) => p.grupo === grupo);
+const otros = deGrupo('otros');
+const esExterno = (url: string) => /^https?:\/\//.test(url);
+---
+
+<Base
+  titulo="Proyectos: supply chain, producto y automatización"
+  imagen="proyectos"
+  descripcion="Más allá del ERP: un gemelo digital para The Fresh Connection, motores propios para ERPsim y el Business Strategy Game, ULiManager con su investigación de mercado y otros proyectos."
+>
+  <article class="mx-auto max-w-5xl px-4 pb-20 pt-12 sm:px-6 sm:pt-16">
+    <header>
+      <p class="font-mono text-eyebrow uppercase text-[var(--acento)]">Proyectos</p>
+      <h1 class="mt-3 max-w-3xl text-4xl font-semibold tracking-tight sm:text-5xl">Más allá del ERP</h1>
+      <p class="mt-5 max-w-2xl text-lg text-[var(--texto-suave)]">
+        Lo que construí fuera del ERP de BBA: motores para los simuladores de la universidad, un producto propio y
+        herramientas para clientes y para mi propio trabajo.
+      </p>
+    </header>
+
+    {
+      grupos.map((g) => {
+        const lista = deGrupo(g.id);
+        return (
+          <section class="mt-16" aria-labelledby={g.id}>
+            <h2 id={g.id} class="text-2xl font-semibold tracking-tight">
+              {g.titulo}
+            </h2>
+            <p class="mt-2 max-w-2xl text-[var(--texto-suave)]">{g.bajada}</p>
+            <ul class:list={['mt-6 grid gap-4 sm:grid-cols-2', lista.length > 2 && 'lg:grid-cols-3']}>
+              {lista.map((p) => (
+                <TarjetaProyecto proyecto={p} />
+              ))}
+            </ul>
+          </section>
+        );
+      })
+    }
+
+    <section class="mt-16" aria-labelledby="otros">
+      <h2 id="otros" class="text-2xl font-semibold tracking-tight">Otros proyectos</h2>
+      <ul class="mt-6 grid max-w-3xl">
+        {
+          otros.map((p) => (
+            <li class="border-t border-[var(--borde)] py-4">
+              <p class="font-semibold">
+                {p.nombre}
+                {p.estado && (
+                  <span class="ml-2 rounded bg-[var(--acento-suave)] px-2 py-0.5 text-sm font-normal text-[var(--acento)]">
+                    {p.estado}
+                  </span>
+                )}
+              </p>
+              <p class="mt-0.5 text-sm text-[var(--texto-suave)]">{[p.contexto, p.periodo].filter(Boolean).join(' · ')}</p>
+              <p class="mt-2">{p.resumen}</p>
+              {(p.herramientas.length > 0 || p.enlace) && (
+                <p class="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-[var(--texto-suave)]">
+                  {p.herramientas.length > 0 && <span>{p.herramientas.join(' · ')}</span>}
+                  {p.enlace && (
+                    <a href={p.enlace.url} target="_blank" rel="noopener" class="font-medium text-[var(--acento)]">
+                      {p.enlace.etiqueta} <span aria-hidden="true">↗</span>
+                    </a>
+                  )}
+                </p>
+              )}
+            </li>
+          ))
+        }
+      </ul>
+    </section>
+
+    <section class="mt-16" aria-labelledby="electivos">
+      <h2 id="electivos" class="text-2xl font-semibold tracking-tight">Electivos: dónde los apliqué</h2>
+      <p class="mt-2 max-w-2xl text-[var(--texto-suave)]">
+        Los cursos que elegí fuera de la malla, y dónde se ve lo que aprendí en cada uno.
+      </p>
+      <ul class="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {
+          educacion.electivos.map((e) => (
+            <li
+              class:list={[
+                'group relative rounded-[var(--radius-card)] border border-[var(--borde)] bg-[var(--superficie)] p-4 transition-colors',
+                e.aplicado.url && 'hover:border-[var(--acento)]',
+              ]}
+            >
+              <p class="font-mono text-eyebrow uppercase text-[var(--texto-suave)]">Código {e.codigo}</p>
+              <h3 class="mt-1 font-semibold leading-snug">{e.nombre}</h3>
+              <p class="mt-1 text-sm text-[var(--texto-suave)]">
+                {e.aplicado.url ? (
+                  <a
+                    href={ruta(e.aplicado.url)}
+                    class="no-underline after:absolute after:inset-0 group-hover:text-[var(--acento)]"
+                  >
+                    {e.aplicado.texto} <span aria-hidden="true" class="text-[var(--acento)]">→</span>
+                  </a>
+                ) : (
+                  e.aplicado.texto
+                )}
+              </p>
+            </li>
+          ))
+        }
+      </ul>
+    </section>
+
+    <section class="mt-16" aria-labelledby="actividades">
+      <h2 id="actividades" class="text-2xl font-semibold tracking-tight">Actividades</h2>
+      <ul class="mt-6 grid gap-3 sm:grid-cols-2">
+        {
+          actividades.map((a) => (
+            <li class="rounded-[var(--radius-card)] border border-[var(--borde)] bg-[var(--superficie)] p-4">
+              <p class="font-semibold leading-snug">
+                {a.url && esExterno(a.url) ? (
+                  <a href={a.url} target="_blank" rel="noopener" class="hover:text-[var(--acento)]">
+                    {a.nombre} <span aria-hidden="true">↗</span>
+                  </a>
+                ) : (
+                  a.nombre
+                )}
+              </p>
+              <p class="mt-1 text-sm text-[var(--texto-suave)]">{[a.detalle, a.fecha].filter(Boolean).join(' · ')}</p>
+            </li>
+          ))
+        }
+      </ul>
+    </section>
+
+    <Contacto />
+  </article>
+</Base>

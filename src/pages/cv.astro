@@ -10,6 +10,8 @@
  * - Una página A4. En pantalla, la hoja se marca en rojo si el contenido se pasa.
  */
 import { Font } from 'astro:assets';
+import Analitica from '../components/Analitica.astro';
+import Compartir from '../components/Compartir.astro';
 import QRCode from 'qrcode';
 import {
   persona,
@@ -21,18 +23,28 @@ import {
   habilidades,
   idiomas,
 } from '../data/perfil.ts';
-import { ruta, urlVisible } from '../utils/rutas.ts';
+import { GA4_ID, urlConUtm, type Canal } from '../data/medicion.ts';
+import { ruta, urlAbsoluta, urlVisible } from '../utils/rutas.ts';
 
-// El QR lleva al portafolio con UTM propia, para saber cuántas visitas trae el CV.
-const urlQr = new URL('/?utm_source=cv&utm_medium=qr', persona.web).href;
+// El QR lleva al portafolio con la UTM de su canal, para saber cuántas visitas
+// trae el CV: el PDF del sitio, o el impreso de la feria (`npm run cv:feria`
+// construye con CV_CANAL=feria). Corrección L: el papel limpio no la necesita
+// más alta, y así los módulos salen más gruesos y se leen mejor impresos.
+const canal: Canal = process.env.CV_CANAL === 'feria' ? 'feria' : 'cv';
+const urlQr = urlConUtm(persona.web, canal);
 const qrSvg = await QRCode.toString(urlQr, {
   type: 'svg',
   margin: 0,
-  errorCorrectionLevel: 'M',
+  errorCorrectionLevel: 'L',
   color: { dark: '#151a21', light: '#0000' },
 });
 
 const certificadosCv = certificados.filter((c) => c.enCv);
+const proyectosCv = proyectos.filter((p) => p.enCv);
+// Un proyecto que enlaza a un certificado de la lista no repite el enlace: ya está en Certificaciones.
+const urlsCertificados = new Set(certificadosCv.map((c) => c.url));
+const anio = (fecha: string | null) => fecha?.split(' ').at(-1);
+const electivosCv = educacion.electivos.map((e) => (e.detalle ? `${e.nombre} (${e.detalle})` : e.nombre));
 const estadoEstudios = [
   educacion.ciclo ? `${educacion.ciclo} ciclo` : 'Pregrado en curso',
   educacion.egresoEstimado && `egreso estimado: ${educacion.egresoEstimado}`,
@@ -56,8 +68,16 @@ const contacto = [
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>CV – {persona.nombre}</title>
     <meta name="description" content={`CV de ${persona.nombre}. ${oferta.frase}`} />
+    <link rel="canonical" href={urlAbsoluta('/cv/', Astro.site)} />
+    <Compartir
+      titulo={`CV – ${persona.nombre}`}
+      descripcion={`CV de ${persona.nombre}. ${oferta.frase}`}
+      url={urlAbsoluta('/cv/', Astro.site)}
+      imagen="cv"
+    />
     <meta name="author" content={persona.nombre} />
     <Font cssVariable="--font-body" preload />
+    <Analitica />
   </head>
   <body>
     <nav class="barra" aria-label="Acciones del CV">
@@ -98,7 +118,7 @@ const contacto = [
           <p><strong>{educacion.institucion}</strong> — {educacion.carrera}</p>
           <p class="fecha">{estadoEstudios}</p>
         </div>
-        <p class="detalle">Cursos electivos: {educacion.electivos.join(' · ')}.</p>
+        <p class="detalle">Cursos electivos: {electivosCv.join(' · ')}.</p>
       </section>
 
       <section>
@@ -115,9 +135,20 @@ const contacto = [
               {emp.roles.map((rol) => (
                 <div class="rol">
                   <div class="fila">
-                    <h3>
-                      {rol.cargo} <span class="suave">· {rol.modalidad}</span>
-                    </h3>
+                    <div>
+                      <h3>
+                        {rol.cargo} <span class="suave">· {rol.modalidad}</span>
+                      </h3>
+                      {rol.enlace && (
+                        <>
+                          {' '}
+                          <span class="suave">·</span>{' '}
+                          <a class="enlace-rol" href={rol.enlace.url}>
+                            {rol.enlace.etiqueta}
+                          </a>
+                        </>
+                      )}
+                    </div>
                     <p class="fecha">
                       {rol.desde} – {rol.hasta ?? 'actualidad'}
                     </p>
@@ -127,11 +158,6 @@ const contacto = [
                       <li>{logro}</li>
                     ))}
                   </ul>
-                  {rol.enlace && (
-                    <p class="detalle-rol">
-                      Detalle por proceso: <a href={rol.enlace.url}>{rol.enlace.etiqueta}</a>
-                    </p>
-                  )}
                 </div>
               ))}
             </div>
@@ -143,21 +169,21 @@ const contacto = [
         <h2>Proyectos</h2>
         <ul class="proyectos">
           {
-            proyectos.map((p) => (
+            proyectosCv.map((p) => (
               <li>
-                <strong>{p.nombre}</strong>
+                <strong>{p.nombreCv ?? p.nombre}</strong>
                 <span class="suave">
                   {' '}
                   · {p.contexto} · {p.herramientas.join(', ')}
                 </span>
-                {p.enlace && (
+                {p.enlace && !urlsCertificados.has(p.enlace.url) && (
                   <>
                     {' '}
                     · <a href={p.enlace.url}>{p.enlace.etiqueta}</a>
                   </>
                 )}
                 <br />
-                {p.resumen}
+                {p.resumenCv ?? p.resumen}
               </li>
             ))
           }
@@ -166,19 +192,20 @@ const contacto = [
 
       <section>
         <h2>Certificaciones</h2>
-        <ul class="certificados">
+        <p class="certificados">
           {
-            certificadosCv.map((c) => (
-              <li>
+            certificadosCv.map((c, i) => (
+              <>
+                {i > 0 && <span class="sep" aria-hidden="true"> · </span>}
                 {c.url ? <a href={c.url}>{c.nombre}</a> : c.nombre}
                 <span class="suave">
                   {' '}
-                  — {c.emisorCorto}, {c.fecha}
+                  ({[c.emisorCorto, anio(c.fecha)].filter(Boolean).join(', ')})
                 </span>
-              </li>
+              </>
             ))
           }
-        </ul>
+        </p>
       </section>
 
       <section>
@@ -198,6 +225,8 @@ const contacto = [
         </ul>
       </section>
     </article>
+
+    {GA4_ID && <p class="aviso">Este sitio mide visitas de forma agregada con Google Analytics.</p>}
 
     <script>
       // Aviso solo en pantalla: si el contenido no cabe en una hoja A4, se marca.
@@ -269,12 +298,12 @@ const contacto = [
         width: 210mm;
         height: 297mm;
         margin: 0 auto 32px;
-        padding: 12mm 14mm 11mm;
+        padding: 10mm 14mm;
         background: #fff;
         box-shadow: 0 2px 14px rgb(0 0 0 / 0.12);
         overflow: hidden;
         font-size: 9.1pt;
-        line-height: 1.36;
+        line-height: 1.32;
       }
 
       .hoja.desborda {
@@ -352,7 +381,7 @@ const contacto = [
       }
 
       section {
-        margin-top: 3.6mm;
+        margin-top: 3mm;
       }
 
       h2 {
@@ -362,11 +391,13 @@ const contacto = [
         letter-spacing: 0.1em;
         color: var(--acento);
         padding-bottom: 0.8mm;
-        margin-bottom: 1.6mm !important;
+        margin-bottom: 1.4mm !important;
         border-bottom: 0.6pt solid var(--linea);
       }
 
+      /* En línea: el enlace del rol va en la misma fila que el cargo. */
       h3 {
+        display: inline;
         font-size: 9.4pt;
         font-weight: 600;
       }
@@ -412,18 +443,7 @@ const contacto = [
         color: var(--acento);
       }
 
-      .detalle-rol {
-        margin-top: 0.8mm !important;
-        padding-left: 4.2mm;
-        color: var(--suave);
-      }
-
-      .detalle-rol a {
-        color: var(--acento) !important;
-      }
-
       .proyectos,
-      .certificados,
       .habilidades {
         list-style: none;
         padding: 0;
@@ -433,18 +453,10 @@ const contacto = [
         margin-top: 1.4mm;
       }
 
+      .enlace-rol,
       .proyectos a,
       .certificados a {
         color: var(--acento) !important;
-      }
-
-      /* Dos columnas al ancho de su contenido: los nombres largos no parten la fecha. */
-      .certificados {
-        display: grid;
-        grid-template-columns: auto auto;
-        justify-content: space-between;
-        column-gap: 6mm;
-        row-gap: 0.6mm;
       }
 
       .certificados .suave {
@@ -455,12 +467,22 @@ const contacto = [
         margin-top: 0.6mm;
       }
 
+      .aviso {
+        max-width: 210mm;
+        margin: 0 auto;
+        padding: 0 16px 24px;
+        color: var(--suave);
+        font-size: 12px;
+        text-align: center;
+      }
+
       @media print {
         body {
           background: #fff;
         }
 
-        .barra {
+        .barra,
+        .aviso {
           display: none;
         }
 
@@ -488,10 +510,6 @@ const contacto = [
         .fila {
           flex-direction: column;
           gap: 0;
-        }
-
-        .certificados {
-          grid-template-columns: 1fr;
         }
       }
     </style>

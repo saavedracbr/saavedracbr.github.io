@@ -12,6 +12,7 @@
  *   seguridad ni de la red de la planta.
  * - Lo que no está verificado no entra aquí.
  */
+import { GA4_ID } from './medicion.ts';
 
 export interface Enlace {
   etiqueta: string;
@@ -40,9 +41,40 @@ export interface Proyecto {
   slug: string;
   nombre: string;
   contexto: string;
+  periodo?: string;
+  /** Va en la tarjeta de la web y, si no hay `resumenCv`, en el CV: cabe en dos líneas del CV. */
   resumen: string;
+  /** Nombre y resumen del CV, cuando los de la web no caben o no se leen bien solos. */
+  nombreCv?: string;
+  resumenCv?: string;
   herramientas: string[];
+  /** Etiqueta corta en la tarjeta: "En alfa", "En curso". */
+  estado?: string;
+  /** Sección de /proyectos. */
+  grupo: 'supply' | 'producto' | 'otros';
+  /** Sale en el CV, en el orden de la lista. */
+  enCv: boolean;
+  /** Página de este sitio con el detalle. En la web manda sobre `enlace`. */
+  pagina?: Enlace;
+  /** Enlace absoluto: el del CV, y el de la web cuando no hay `pagina`. */
   enlace?: Enlace;
+}
+
+export interface Electivo {
+  nombre: string;
+  /** Entre paréntesis después del nombre, en el CV. */
+  detalle?: string;
+  codigo: string;
+  /** Dónde se ve lo que aprendí, en /proyectos. Sin `url` cuando no hay una página que lo muestre. */
+  aplicado: { texto: string; url?: string };
+}
+
+export interface Actividad {
+  nombre: string;
+  detalle: string;
+  fecha?: string;
+  url?: string;
+  enCv: boolean;
 }
 
 export interface Certificado {
@@ -122,12 +154,23 @@ export const pilares: Pilar[] = [
   {
     titulo: 'Automatización e integración',
     frase: 'Conecto equipos, sistemas y entidades para quitar trabajo manual. Construyo con IA como copiloto.',
-    evidencia: ['Huellero → ERP → planilla PLAME', 'Facturación y guías SUNAT', 'Control guía↔factura', 'Claude Code'],
+    evidencia: [
+      'Huellero → ERP → planilla PLAME',
+      'Facturación y guías SUNAT',
+      'Control guía↔factura',
+      'Gastos desde la factura con IA (Gemini)',
+      'Claude Code',
+    ],
   },
   {
     titulo: 'Datos para decidir',
     frase: 'Convierto datos en indicadores y decisiones.',
-    evidencia: ['Dashboard de matrícula U. de Lima', 'Réplica del BSG', 'EDA, Big Data y Google Analytics'],
+    evidencia: [
+      'Motor ERPsim sobre SAP',
+      'Réplica del BSG',
+      'Dashboard de matrícula U. de Lima',
+      'EDA, Big Data y Google Analytics',
+    ],
   },
   {
     titulo: 'Visión de negocio y cliente',
@@ -152,6 +195,7 @@ export const experiencia: Experiencia[] = [
           'Talento Humano (en piloto, más de 100 colaboradores): llevé del Excel al ERP la hoja diaria de turnos por equipo, proceso y estación; integré en tiempo real los biométricos ZKTeco, con un respaldo en Raspberry Pi para no perder marcas en los apagones; y la nómina genera los archivos de la PLAME para SUNAT.',
           'Facturación SUNAT de punta a punta: clientes validados por API, factura 1:1 desde la guía de remisión, retenciones y detracciones automáticas y un control guía↔factura para que ningún despacho quede sin facturar.',
           'Trazabilidad del pedido al despacho: fecha de entrega por línea, la orden de compra del cliente en cada orden de producción y albarán, reporte de producción pendiente y bloqueo del stock negativo.',
+          'Integré Google Workspace con el ERP (Apps Script): contactos sincronizados en los dos sentidos y gastos creados desde la factura en PDF, leída con IA (Gemini); hasta abr. 2026, unas 30 actualizaciones y 20 facturas al mes.',
           'Levanto cada proceso con sus usuarios, lo pruebo en un entorno aparte antes de producción y capacito al personal; presenté el proyecto a la Gerencia General. Construyo con IA (Claude Code) como copiloto.',
         ],
         enlace: { etiqueta: 'saavedracbr.com/erp', url: 'https://saavedracbr.com/erp' },
@@ -162,11 +206,58 @@ export const experiencia: Experiencia[] = [
         desde: 'mar. 2025',
         hasta: 'abr. 2026',
         logros: [
-          'Atendí a equipos de trade marketing de Colgate-Palmolive, Grupo Arcor y Aceros Arequipa en proyectos de material POP y packaging, como nexo entre el cliente y la planta.',
-          'Contribuí a un aumento del 33 % en la facturación del equipo (2025 frente a 2024) y usé el ERP para comprometer fechas de entrega reales y seguir cada pedido hasta el despacho.',
+          // Un solo logro para que el CV quepa en una página con los 3 proyectos.
+          'Nexo entre la planta y el trade marketing de Colgate-Palmolive, Grupo Arcor y Aceros Arequipa; contribuí al +33 % en la facturación del equipo (2025 frente a 2024) y seguí cada pedido en el ERP hasta el despacho.',
         ],
       },
     ],
+  },
+];
+
+/** Solo electivos: los obligatorios de la malla los lleva toda la carrera. Ordenados por relevancia. */
+const electivosCursados: Electivo[] = [
+  {
+    nombre: 'Juego de Negocios',
+    detalle: 'ERPsim y Business Strategy Game',
+    codigo: '5673',
+    aplicado: {
+      texto: 'Dos motores propios: uno para ERPsim, que corre sobre SAP, y una réplica del BSG.',
+      url: '/casos/juego-de-negocios',
+    },
+  },
+  {
+    nombre: 'Sostenibilidad Industrial',
+    detalle: 'estrategia ESG en Company Game',
+    codigo: '560100',
+    aplicado: { texto: 'Company Game: un protocolo para medir la estrategia ESG (en curso).', url: '/proyectos#otros' },
+  },
+  {
+    nombre: 'Metodologías Ágiles',
+    codigo: '560032',
+    aplicado: { texto: 'Scrum adaptado en el ERP: cada módulo es una entrega pequeña del proceso.', url: '/erp#metodo' },
+  },
+  {
+    nombre: 'Gerencia B2B',
+    codigo: '560029',
+    aplicado: { texto: 'Ventas B2B a multinacionales: contribuí al +33 % en la facturación del equipo.' },
+  },
+  {
+    nombre: 'Herramientas de Marketing Digital',
+    codigo: '560005',
+    // La medición con GA4 se cuenta solo cuando el sitio ya la tiene puesta.
+    aplicado: {
+      texto: GA4_ID
+        ? 'Certificados de Google Analytics y de inbound marketing (HubSpot); mido este sitio y la feria con GA4.'
+        : 'Certificados de Google Analytics y de inbound marketing (HubSpot).',
+    },
+  },
+  {
+    nombre: 'Taller de Liderazgo',
+    codigo: '560076',
+    aplicado: {
+      texto: 'Liderar el ERP tras la salida del partner externo y capacitar a sus más de 15 usuarios.',
+      url: '/erp',
+    },
   },
 ];
 
@@ -176,39 +267,177 @@ export const educacion = {
   /** `null` muestra "Pregrado en curso" en el CV. Actualizar al cambiar de ciclo. */
   ciclo: '8.º' as string | null,
   egresoEstimado: 'dic. 2027' as string | null,
-  /** Solo electivos: los obligatorios de la malla los lleva toda la carrera. Ordenados por relevancia. */
-  electivos: [
-    'Juego de Negocios (ERPsim y Business Strategy Game)',
-    'Sostenibilidad Industrial (estrategia ESG en Company Game)',
-    'Metodologías Ágiles',
-    'Gerencia B2B',
-    'Herramientas de Marketing Digital',
-    'Taller de Liderazgo',
-  ],
+  electivos: electivosCursados,
 } as const;
 
 export const URL_DASHBOARD =
   'https://datastudio.google.com/reporting/6b1bf0ae-b8a9-4ca6-bb0a-421d744cdee5';
+const URL_CERTIFICADO_TFC = 'https://game.thefreshconnection.eu/certificate/1KF4F5G2LM9SHEZJ';
 
-/** Los del CV. El trabajo en BBA no va aquí: ya está en Experiencia y en /erp. */
+/**
+ * Todo lo que no es el ERP de BBA, que ya está en Experiencia y en /erp. La web
+ * los agrupa en /proyectos; el CV toma los de `enCv`, en este orden.
+ */
 export const proyectos: Proyecto[] = [
   {
+    slug: 'juego-de-negocios',
+    nombre: 'Juego de Negocios: motores para ERPsim (SAP) y el BSG',
+    /** Iniciativa propia: el curso no pedía ni enseñaba los motores. */
+    contexto: 'Proyecto propio',
+    periodo: 'abr.–jul. 2026',
+    resumen:
+      'Pronóstico de demanda con XGBoost y reposición a 3 regiones con la tabla de traslados de SAP; la réplica del BSG reproduce 8 años con 7 % de error en ingresos netos.',
+    herramientas: ['Python', 'XGBoost', 'SAP S/4HANA'],
+    grupo: 'supply',
+    enCv: true,
+    pagina: { etiqueta: 'Ver el caso', url: '/casos/juego-de-negocios' },
+    enlace: { etiqueta: 'Ver el caso', url: `${persona.web}/casos/juego-de-negocios` },
+  },
+  {
+    slug: 'tfc-gemelo-digital',
+    nombre: 'Gemelo digital para The Fresh Connection',
+    contexto: 'Modelos de Sistemas Logísticos · rol Supply Chain',
+    periodo: 'may.–jun. 2026',
+    resumen:
+      'Lee los reportes del simulador, replica 26 semanas de la cadena de jugos (recetas, contratos y costos) y busca con recocido simulado la configuración de mayor ROI antes de cada ronda.',
+    resumenCv:
+      'Replica la cadena de jugos (recetas, contratos y costos) para evaluar decisiones antes de cada ronda.',
+    herramientas: ['Python (FastAPI)', 'React'],
+    grupo: 'supply',
+    enCv: true,
+    enlace: { etiqueta: 'Certificado de Inchainge', url: URL_CERTIFICADO_TFC },
+  },
+  {
+    slug: 'uli-manager',
+    nombre: 'ULiManager',
+    nombreCv: 'ULiManager (alfa) e investigación de mercado',
+    contexto: 'Producto propio',
+    periodo: 'desde may. 2026',
+    resumen:
+      'App para universitarios: lee la matrícula y los sílabos, proyecta el promedio y sincroniza el horario con Google Calendar. Su investigación de mercado es un dashboard de matrícula de la U. de Lima desde 2020.',
+    herramientas: ['Python (Streamlit)', 'APIs de Google', 'Data Studio'],
+    estado: 'En alfa',
+    grupo: 'producto',
+    enCv: true,
+  },
+  {
     slug: 'dashboard-matricula',
-    nombre: 'Dashboard de matrícula en la U. de Lima',
-    contexto: 'Investigación de mercado propia',
+    nombre: 'Dashboard de matrícula de la U. de Lima',
+    contexto: 'Investigación de mercado de ULiManager',
     resumen:
       'Matrícula, postulantes e ingresantes por carrera desde 2020, en un dashboard de 4 páginas.',
     herramientas: ['Data Studio'],
+    grupo: 'producto',
+    // En el CV va dentro de ULiManager.
+    enCv: false,
+    pagina: { etiqueta: 'Ver el dashboard', url: '/dashboard' },
     enlace: { etiqueta: 'Ver dashboard', url: URL_DASHBOARD },
   },
   {
-    slug: 'bsg-optimizer',
-    nombre: 'Modelo de decisiones para Business Strategy Game',
-    /** Iniciativa propia: el curso no pedía ni enseñaba el modelo. */
-    contexto: 'Proyecto propio (electivo Juego de Negocios)',
+    slug: 'planificador-matricula',
+    nombre: 'Planificador de matrícula',
+    contexto: 'Producto propio',
+    periodo: 'ago. 2026',
     resumen:
-      'Réplica del simulador: reproduce 8 años con 7 % de error en ingresos netos; el error en utilidad neta bajó de 31.8 % a 17.0 % al corregir el modelo de costos.',
-    herramientas: ['Python'],
+      'Una sola página web que lee los horarios de la U. de Lima y arma las combinaciones de secciones sin cruces. Es el problema de programar la producción: encajar actividades con restricciones.',
+    herramientas: ['HTML', 'JavaScript'],
+    estado: 'Demo próximamente',
+    grupo: 'producto',
+    enCv: false,
+  },
+  {
+    slug: 'prontuario',
+    nombre: 'Prontuario',
+    contexto: 'MVP para un estudio de abogados',
+    periodo: 'sep.–oct. 2026',
+    resumen:
+      'Con una placa, reúne en un solo reporte PDF lo que dicen varias fuentes públicas: SUNARP, SOAT, SAT, MTC y otras.',
+    herramientas: ['Python (FastAPI)', 'React', 'PostgreSQL'],
+    grupo: 'otros',
+    enCv: false,
+  },
+  {
+    slug: 'organizador-gmail',
+    nombre: 'Organizador de Gmail',
+    contexto: 'Productividad propia',
+    periodo: 'desde dic. 2025',
+    resumen:
+      'Cuatro bandejas en una: un script etiqueta cada correo según la cuenta a la que llegó y, en la del trabajo, según el área del remitente.',
+    herramientas: ['Google Apps Script'],
+    grupo: 'otros',
+    enCv: false,
+  },
+  {
+    slug: 'finper',
+    nombre: 'Finper',
+    contexto: 'App de finanzas personales',
+    periodo: 'sep.–oct. 2026',
+    resumen:
+      'Lee los estados de cuenta en PDF y los avisos del banco, clasifica cada movimiento y lo analiza, con una app Android y despliegue en Google Cloud.',
+    herramientas: ['Python (FastAPI)', 'Next.js', 'Android', 'Google Cloud'],
+    grupo: 'otros',
+    enCv: false,
+  },
+  {
+    slug: 'arqdeco',
+    nombre: 'Sitio web de ARQDECO PERÚ',
+    contexto: 'Cliente: arquitectura y seguridad de edificaciones',
+    periodo: 'ago. 2026',
+    resumen: 'Sitio corporativo estático, sin servidor que mantener ni base de datos.',
+    herramientas: ['Astro', 'Tailwind CSS'],
+    grupo: 'otros',
+    enCv: false,
+    enlace: { etiqueta: 'Ver el preview', url: 'https://arqdeco.saavedracbr.com' },
+  },
+  {
+    slug: 'casio-procesos',
+    nombre: 'Suite para la calculadora Casio fx-9860GIII',
+    contexto: 'Curso Procesos Industriales',
+    periodo: 'sep.–oct. 2026',
+    resumen:
+      'Programas que resuelven los ejercicios del curso con sus fórmulas y tablas: refrigeración, ciclo Rankine, psicrometría y secado.',
+    herramientas: ['MicroPython'],
+    grupo: 'otros',
+    enCv: false,
+  },
+  {
+    slug: 'company-game',
+    nombre: 'Company Game: estrategia ESG',
+    contexto: 'Electivo Sostenibilidad Industrial',
+    periodo: 'desde sep. 2026',
+    resumen:
+      'En la ronda de prueba, que se reinicia, armé un protocolo para medir y no para ganar: cómo mueve cada decisión el valor de la compañía en lo económico, lo ambiental y lo social.',
+    herramientas: [],
+    estado: 'En curso',
+    grupo: 'otros',
+    enCv: false,
+  },
+];
+
+/** Círculos y congresos. Next-Gen no va. */
+export const actividades: Actividad[] = [
+  { nombre: 'Círculo de Gestión de Proyectos', detalle: 'U. de Lima · miembro', enCv: true },
+  { nombre: 'Círculo Trends & Innovation Marketing', detalle: 'U. de Lima · miembro', enCv: false },
+  { nombre: 'Círculo Inteligencia de Datos en Marketing', detalle: 'U. de Lima · miembro', enCv: false },
+  {
+    nombre: 'V CONCEPMI 2025, del PMI',
+    detalle: 'En la delegación de la U. de Lima · 20 h',
+    fecha: '15–16 nov. 2025',
+    enCv: true,
+  },
+  {
+    nombre: 'IV Congreso Internacional de Ingeniería Industrial',
+    detalle: 'U. de Lima · 12 h',
+    fecha: '29–30 oct. 2025',
+    url: 'https://v.ulima.pe/446405c42efe4937.pdf',
+    enCv: true,
+  },
+  {
+    nombre: 'V Congreso Internacional de Ingeniería Industrial',
+    detalle: 'U. de Lima · 16 h',
+    fecha: '1–2 sep. 2026',
+    url: 'https://v.ulima.pe/814a827b74482a16.pdf',
+    enCv: true,
   },
 ];
 
@@ -242,7 +471,7 @@ export const certificados: Certificado[] = [
     emisorCorto: 'Inchainge',
     fecha: 'jun. 2026',
     id: '1KF4F5G2LM9SHEZJ',
-    url: 'https://game.thefreshconnection.eu/certificate/1KF4F5G2LM9SHEZJ',
+    url: URL_CERTIFICADO_TFC,
     cluster: 'B',
     enCv: true,
   },
@@ -273,10 +502,10 @@ export const certificados: Certificado[] = [
     emisorCorto: 'UNI',
     fecha: 'ago. 2024',
     id: '016-0014462',
-    /** Es una constancia de asistencia (16 h), no un certificado aprobado. */
+    /** Es una constancia de asistencia (16 h), no un certificado aprobado: sale del CV para que entren los proyectos. */
     url: 'https://certificados.uni.edu.pe/verificador/search.php?cert_id=asis_058df5df4f8ac81eb760c221ad535902',
     cluster: 'C',
-    enCv: true,
+    enCv: false,
   },
   {
     nombre: 'Inbound Marketing',
@@ -292,7 +521,8 @@ export const certificados: Certificado[] = [
 
 /**
  * Cada habilidad tiene detrás un módulo del ERP, un proyecto o un certificado.
- * Sin SAP ni Power BI: no se ponen hasta tener una pieza que lo pruebe.
+ * SAP solo como el simulador ERPsim, que prueba el motor de Juego de Negocios.
+ * Sin Power BI: no se pone hasta tener una pieza que lo pruebe.
  */
 export const habilidades: GrupoHabilidades[] = [
   {
@@ -334,14 +564,16 @@ export const habilidades: GrupoHabilidades[] = [
     grupo: 'ERP y tecnología',
     items: [
       'Odoo 17–19 (Studio, módulos a medida, migración)',
+      'SAP S/4HANA (simulador ERPsim)',
       'Integración con APIs y biométricos',
       'Excel',
       'SQL',
       'Python',
+      'Google Apps Script',
       'Data Studio',
       'Google Analytics 4',
       'Git',
-      'IA generativa (Claude Code)',
+      'IA generativa (Claude Code, Gemini API)',
     ],
     ampliado: [
       'Odoo: Ventas, CRM, Inventario, Fabricación, Contabilidad, Asistencias, Planificación y Nómina',

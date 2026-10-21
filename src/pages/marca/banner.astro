@@ -1,0 +1,56 @@
+---
+/**
+ * Banner de LinkedIn, 1584×396. `npm run imagenes` lo captura a
+ * `docs/marca/banner-linkedin.png`, que no se publica: lo subes tú.
+ *
+ * El texto va dentro de la zona segura (x 620–1500, y 70–330): la foto de perfil
+ * tapa el tramo de abajo a la izquierda, y el celular recorta los lados.
+ */
+import Pieza from '../../components/marca/Pieza.astro';
+import { persona, oferta, cifrasErp } from '../../data/perfil.ts';
+import { urlVisible } from '../../utils/rutas.ts';
+
+const lema = oferta.frase.split(': ')[0];
+const subtitulo = `ERP Odoo · ${cifrasErp.modulos} módulos en producción · Odoo ${cifrasErp.versionDesde} → ${cifrasErp.versionHasta}`;
+---
+
+<Pieza titulo="Banner de LinkedIn" ancho={1584} alto={396} escala={0.85}>
+  <div class="zona">
+    <p class="lema">{lema}</p>
+    <p class="subtitulo">{subtitulo}</p>
+    <p class="web">{urlVisible(persona.web)}</p>
+  </div>
+</Pieza>
+
+<style>
+  /* El velo de Pieza oscurece la izquierda; aquí el texto empieza en x 620. */
+  .zona {
+    position: absolute;
+    left: 620px;
+    top: 70px;
+    width: 880px;
+    height: 260px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .lema {
+    font-size: 64px;
+    line-height: 1.05;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+  }
+
+  .subtitulo {
+    margin-top: 16px !important;
+    font-size: 26px;
+    font-weight: 500;
+    color: #d6e9f5;
+  }
+
+  .web {
+    margin-top: 22px !important;
+    font-size: 24px;
+  }
+</style>

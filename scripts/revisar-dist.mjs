@@ -8,7 +8,9 @@
  *   uno por línea, sin distinguir mayúsculas ni tildes. Las líneas con # se ignoran;
  * - una dirección IPv4;
  * - 8 dígitos seguidos en el texto visible, que podrían ser un DNI;
- * - "Ingeniero" o "Ingeniera" usados como título.
+ * - "Ingeniero" o "Ingeniera" usados como título;
+ * - una página cuya og:image no está en `dist/`: la tarjeta se vería rota al
+ *   compartirla. Se arregla con `npm run imagenes`.
  *
  * `docs/` está en .gitignore: los términos nunca llegan al repo. Por eso este
  * script no corre en CI, y por eso falla si el archivo falta o está vacío: sin él
@@ -110,6 +112,12 @@ for (const ruta of archivos(DIST)) {
   if (extname(ruta) === '.html') {
     const visible = textoVisible(crudo);
     for (const m of visible.matchAll(OCHO_DIGITOS)) anotar('8 dígitos seguidos (¿DNI?)', visible, m.index, m[0].length);
+
+    const og = crudo.match(/<meta property="og:image" content="([^"]+)"/);
+    const imagen = og && decodeURI(new URL(og[1]).pathname);
+    if (imagen && !existsSync(join(DIST, imagen))) {
+      hallazgos.push({ archivo, motivo: 'og:image sin archivo en dist/ (corre `npm run imagenes`)', contexto: imagen });
+    }
   }
 }
 

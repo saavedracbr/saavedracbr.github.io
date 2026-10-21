@@ -1,0 +1,120 @@
+---
+/**
+ * Fondo virtual de Zoom, 1920×1080.
+ *
+ * No es una página para visitar: `npm run imagenes` la captura a
+ * `docs/marca/fondo-zoom.png`. La IA hizo solo el fondo (prompt B0); el nombre,
+ * el título y el QR los pone esta página, con la fuente del sitio.
+ *
+ * El bloque va arriba a la derecha, la zona que el fondo deja despejada y que la
+ * persona no tapa. Zoom muestra el texto al revés solo en tu propia vista
+ * ("Reflejar mi video"); los demás lo ven bien.
+ */
+import { Font, getImage } from 'astro:assets';
+import QRCode from 'qrcode';
+import fondoOriginal from '../../assets/marca/fondo-zoom.jpg';
+import { persona } from '../../data/perfil.ts';
+import { urlConUtm } from '../../data/medicion.ts';
+import { urlVisible } from '../../utils/rutas.ts';
+
+// UTM propia: en GA4 se ve cuántas visitas trae el fondo.
+const urlQr = urlConUtm(persona.web, 'zoom');
+const qrSvg = await QRCode.toString(urlQr, {
+  type: 'svg',
+  margin: 0,
+  errorCorrectionLevel: 'M',
+  color: { dark: '#151a21', light: '#ffffff' },
+});
+const fondo = await getImage({ src: fondoOriginal, width: 1920, format: 'jpg', quality: 90 });
+---
+
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=1920" />
+    <meta name="robots" content="noindex" />
+    <title>Fondo de Zoom – {persona.nombre}</title>
+    <Font cssVariable="--font-body" preload />
+  </head>
+  <body>
+    <main class="lienzo" style={`background-image: url(${fondo.src})`}>
+      <div class="bloque">
+        <p class="nombre">{persona.nombreCorto}</p>
+        <p class="titulo">{persona.titulo}</p>
+        <p class="titulo">{persona.universidad}</p>
+        <div class="qr" set:html={qrSvg} />
+        <p class="web">{urlVisible(persona.web)}</p>
+      </div>
+    </main>
+
+    <style is:global>
+      html,
+      body {
+        margin: 0;
+        background: #151a21;
+      }
+
+      .lienzo {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background-size: cover;
+        background-position: center;
+        font-family: var(--font-body), 'Segoe UI', Arial, sans-serif;
+      }
+
+      /* Letra grande: en una videollamada el fondo se ve en un recuadro pequeño y comprimido. */
+      .bloque {
+        position: absolute;
+        top: 56px;
+        right: 64px;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        text-align: right;
+      }
+
+      .bloque p {
+        margin: 0;
+      }
+
+      .nombre {
+        font-size: 68px;
+        line-height: 1.05;
+        font-weight: 700;
+        letter-spacing: -0.015em;
+        color: #f6f7f9;
+      }
+
+      .titulo {
+        margin-top: 6px !important;
+        font-size: 30px;
+        line-height: 1.25;
+        font-weight: 500;
+        color: #b9c0cb;
+      }
+
+      .qr {
+        margin-top: 28px;
+        padding: 24px;
+        background: #fff;
+        border-radius: 16px;
+      }
+
+      .qr svg {
+        display: block;
+        width: 280px;
+        height: 280px;
+      }
+
+      .web {
+        margin-top: 14px !important;
+        font-size: 36px;
+        font-weight: 600;
+        color: #77b3d9;
+      }
+    </style>
+  </body>
+</html>

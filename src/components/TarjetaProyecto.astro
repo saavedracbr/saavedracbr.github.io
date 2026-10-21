@@ -1,0 +1,59 @@
+---
+import type { Enlace, Proyecto } from '../data/perfil.ts';
+import { ruta } from '../utils/rutas.ts';
+
+interface Props {
+  proyecto: Proyecto;
+  /** Nivel del título según dónde vaya la tarjeta. */
+  nivel?: 'h2' | 'h3';
+  /** Adónde lleva la tarjeta, si no es a su página o a su enlace (en la portada, a /proyectos). */
+  destino?: Enlace;
+}
+
+const { proyecto, nivel = 'h3', destino } = Astro.props;
+const Titulo = nivel;
+const antetitulo = [proyecto.contexto, proyecto.periodo].filter(Boolean).join(' · ');
+// Sin enlace, la tarjeta queda fija: ULiManager en alfa no tiene nada que abrir todavía.
+const enlace = destino ?? proyecto.pagina ?? proyecto.enlace;
+const esExterno = enlace ? /^https?:\/\//.test(enlace.url) : false;
+---
+
+<li
+  class:list={[
+    'group relative flex flex-col rounded-[var(--radius-card)] border border-[var(--borde)] bg-[var(--superficie)] p-5 transition-colors',
+    enlace && 'hover:border-[var(--acento)]',
+  ]}
+>
+  <p class="font-mono text-eyebrow uppercase text-[var(--texto-suave)]">{antetitulo}</p>
+  <Titulo class="mt-2 text-lg font-semibold leading-snug">
+    {
+      enlace ? (
+        <a
+          href={esExterno ? enlace.url : ruta(enlace.url)}
+          class="no-underline after:absolute after:inset-0 group-hover:text-[var(--acento)]"
+          {...(esExterno ? { target: '_blank', rel: 'noopener' } : {})}
+        >
+          {proyecto.nombre}
+        </a>
+      ) : (
+        proyecto.nombre
+      )
+    }
+  </Titulo>
+  <p class="mt-2 flex-1 text-[var(--texto-suave)]">{proyecto.resumen}</p>
+  {
+    proyecto.herramientas.length > 0 && (
+      <p class="mt-3 text-sm text-[var(--texto-suave)]">{proyecto.herramientas.join(' · ')}</p>
+    )
+  }
+  <p class="mt-4 flex flex-wrap items-center gap-3 text-sm">
+    {proyecto.estado && <span class="rounded bg-[var(--acento-suave)] px-2 py-1 text-[var(--acento)]">{proyecto.estado}</span>}
+    {
+      enlace && (
+        <span class="font-medium text-[var(--acento)]">
+          {enlace.etiqueta} <span aria-hidden="true">{esExterno ? '↗' : '→'}</span>
+        </span>
+      )
+    }
+  </p>
+</li>

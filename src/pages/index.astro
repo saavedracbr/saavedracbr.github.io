@@ -1,18 +1,25 @@
 ---
 import Base from '../layouts/Base.astro';
 import TarjetaCaso from '../components/TarjetaCaso.astro';
+import TarjetaProyecto from '../components/TarjetaProyecto.astro';
 import CifrasErp from '../components/CifrasErp.astro';
-import { persona, oferta, pilares, cifrasErp } from '../data/perfil.ts';
-import { casos } from '../data/casos.ts';
+import { persona, oferta, pilares, cifrasErp, proyectos, type Enlace } from '../data/perfil.ts';
 import { procesos } from '../data/erp.ts';
-import { resumenMatricula } from '../data/dashboard.ts';
 import { ruta } from '../utils/rutas.ts';
 
 // Portada: la oferta, el ERP (cifras y los cuatro procesos, cada uno con su
-// caso), los datos (el caso restante y el dashboard) y los pilares. Las demos se
-// suman aquí cuando tengan página propia.
-const slugsErp = new Set(procesos.map((p) => p.caso.slug));
-const casosDatos = casos.filter((c) => !slugsErp.has(c.slug));
+// caso), tres proyectos de fuera del ERP y los pilares. Las demos se suman aquí
+// cuando tengan página propia.
+const destacado = (slug: string, destino?: Enlace) => {
+  const proyecto = proyectos.find((p) => p.slug === slug);
+  if (!proyecto) throw new Error(`index.astro: no hay un proyecto "${slug}" en perfil.ts.`);
+  return { proyecto, destino };
+};
+const masAlla = [
+  destacado('juego-de-negocios'),
+  destacado('tfc-gemelo-digital', { etiqueta: 'Ver en Proyectos', url: '/proyectos#supply' }),
+  destacado('uli-manager', { etiqueta: 'Ver en Proyectos', url: '/proyectos#producto' }),
+];
 ---
 
 <Base titulo={`${persona.nombreCorto} – ${persona.titulo}`} descripcion={oferta.frase}>
@@ -63,28 +70,17 @@ const casosDatos = casos.filter((c) => !slugsErp.has(c.slug));
     </ul>
   </section>
 
-  <section class="mx-auto max-w-5xl px-4 pb-14 sm:px-6" aria-labelledby="datos">
+  <section class="mx-auto max-w-5xl px-4 pb-14 sm:px-6" aria-labelledby="mas-alla">
     <div class="flex flex-wrap items-baseline justify-between gap-2">
-      <h2 id="datos" class="text-2xl font-semibold tracking-tight">Datos para decidir</h2>
-      <a href={ruta('/casos')} class="text-sm font-medium text-[var(--acento)]">Todos los casos →</a>
+      <h2 id="mas-alla" class="text-2xl font-semibold tracking-tight">Más allá del ERP</h2>
+      <a href={ruta('/proyectos')} class="text-sm font-medium text-[var(--acento)]">Todos los proyectos →</a>
     </div>
-    <ul class="mt-6 grid gap-4 sm:grid-cols-2">
-      {casosDatos.map((caso) => <TarjetaCaso caso={caso} />)}
-      <li
-        class="group relative flex flex-col rounded-[var(--radius-card)] border border-[var(--borde)] bg-[var(--superficie)] p-5 transition-colors hover:border-[var(--acento)]"
-      >
-        <p class="font-mono text-eyebrow uppercase text-[var(--texto-suave)]">Proyecto propio · Data Studio</p>
-        <h3 class="mt-2 text-lg font-semibold leading-snug">
-          <a href={ruta('/dashboard')} class="no-underline after:absolute after:inset-0 group-hover:text-[var(--acento)]">
-            Dashboard de matrícula de la U. de Lima
-          </a>
-        </h3>
-        <p class="mt-2 flex-1 text-[var(--texto-suave)]">
-          La matrícula creció {resumenMatricula.crecimiento} % en cinco años. Cuatro páginas con matrícula, postulantes e
-          ingresantes por carrera.
-        </p>
-        <p class="mt-4 text-sm font-medium text-[var(--acento)]">Ver dashboard →</p>
-      </li>
+    <p class="mt-3 max-w-3xl text-[var(--texto-suave)]">
+      Simuladores de la universidad que llevé más lejos por mi cuenta, y un producto propio con su investigación de
+      mercado.
+    </p>
+    <ul class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {masAlla.map(({ proyecto, destino }) => <TarjetaProyecto proyecto={proyecto} destino={destino} />)}
     </ul>
   </section>
 

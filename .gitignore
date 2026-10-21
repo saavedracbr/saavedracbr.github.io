@@ -1,8 +1,12 @@
 # Estrategia de marca personal (diagnóstico, ofertas, LinkedIn): solo local, el repo es público.
 docs/
+# Imágenes en bruto generadas con IA; las que se usan se copian a src/assets/marca/.
+media/
 
 node_modules/
 dist/
+# Build temporal del CV impreso (`npm run cv:feria`); el script lo borra al terminar.
+dist-feria/
 .astro/
 .env
 .env.*

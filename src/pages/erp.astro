@@ -3,13 +3,13 @@ import Base from '../layouts/Base.astro';
 import CifrasErp from '../components/CifrasErp.astro';
 import Contacto from '../components/Contacto.astro';
 import { cifrasErp } from '../data/perfil.ts';
-import { procesos, trayectoria, metodo, reservas } from '../data/erp.ts';
+import { procesos, trayectoria, metodo, integraciones, notaIntegraciones, reservas } from '../data/erp.ts';
 import { ruta } from '../utils/rutas.ts';
 
 const descripcion = `El ERP Odoo de BBA Pack, una planta de POP y packaging: ${cifrasErp.modulos} módulos propios en producción en ${cifrasErp.procesos} procesos, de los turnos y el huellero a la planilla PLAME y la facturación SUNAT.`;
 ---
 
-<Base titulo="El ERP de una planta, proceso por proceso" descripcion={descripcion}>
+<Base titulo="El ERP de una planta, proceso por proceso" descripcion={descripcion} imagen="erp">
   <article class="mx-auto max-w-5xl px-4 pb-20 pt-12 sm:px-6 sm:pt-16">
     <header>
       <p class="font-mono text-eyebrow uppercase text-[var(--acento)]">BBA Pack · ERP Project Manager</p>
@@ -64,6 +64,27 @@ const descripcion = `El ERP Odoo de BBA Pack, una planta de POP y packaging: ${c
           ))
         }
       </ol>
+    </section>
+
+    <section class="mt-16" aria-labelledby="integraciones">
+      <h2 id="integraciones" class="text-2xl font-semibold tracking-tight">Alrededor del ERP</h2>
+      <p class="mt-2 max-w-2xl text-[var(--texto-suave)]">
+        Google Workspace conectado con Odoo, para que los datos no se tecleen dos veces.
+      </p>
+      <ul class="mt-6 grid gap-4 sm:grid-cols-2">
+        {
+          integraciones.map((i) => (
+            <li class="flex flex-col rounded-[var(--radius-card)] border border-[var(--borde)] bg-[var(--superficie)] p-5">
+              <h3 class="font-semibold">{i.titulo}</h3>
+              <p class="mt-2 flex-1 text-[var(--texto-suave)]">{i.detalle}</p>
+              <p class="mt-4 text-sm">
+                <span class="rounded bg-[var(--acento-suave)] px-2 py-1 text-[var(--acento)]">{i.volumen}</span>
+              </p>
+            </li>
+          ))
+        }
+      </ul>
+      <p class="mt-4 text-sm text-[var(--texto-suave)]">{notaIntegraciones}</p>
     </section>
 
     <section class="mt-16" aria-labelledby="trayectoria">

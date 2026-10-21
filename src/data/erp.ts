@@ -180,6 +180,11 @@ export const trayectoria: Hito[] = [
     detalle: 'Desarrollo los primeros módulos a medida, que se integraban a través del partner externo.',
   },
   {
+    periodo: 'dic. 2025 – abr. 2026',
+    titulo: 'Google Workspace ↔ ERP',
+    detalle: 'Contactos sincronizados con Google y gastos que se creaban solos desde la factura en PDF, leída con IA (Gemini).',
+  },
+  {
     periodo: 'mar. 2026',
     titulo: 'Internalización y migración',
     detalle:
@@ -205,12 +210,38 @@ export const trayectoria: Hito[] = [
 export const metodo: Omit<PasoProceso, 'modulos'>[] = [
   { titulo: 'Levantar el proceso', detalle: 'Con quienes lo hacen, en planta o en oficina.' },
   { titulo: 'Definir la regla', detalle: 'Escribir la regla de negocio antes de tocar el sistema.' },
-  { titulo: 'Construir', detalle: 'Módulos a medida en Odoo, con IA (Claude Code) como copiloto.' },
+  {
+    titulo: 'Construir',
+    detalle:
+      'Módulos a medida en Odoo, en entregas pequeñas (Scrum adaptado): cada módulo es una parte del proceso que se revisa y corrige por separado. Con IA (Claude Code) como copiloto.',
+  },
   { titulo: 'Probar', detalle: 'Pruebas automáticas para las reglas que no pueden fallar.' },
   { titulo: 'Ensayar', detalle: 'En un entorno aparte, igual al real, antes de tocar producción.' },
   { titulo: 'Publicar', detalle: 'El cambio pasa a producción solo después de probarse.' },
   { titulo: 'Capacitar', detalle: 'Y ajustar con lo que dicen los usuarios.' },
 ];
+
+/**
+ * Scripts de Google Apps Script alrededor del ERP. Se usaron hasta abr. 2026,
+ * así que van en pasado. No son módulos de Odoo: no entran en la suma de arriba,
+ * y no se publica su código ni sus enlaces.
+ */
+export const integraciones: (Omit<PasoProceso, 'modulos'> & { volumen: string })[] = [
+  {
+    titulo: 'Contactos sincronizados',
+    detalle:
+      'Odoo y Google Contacts se sincronizaban en los dos sentidos, casi en tiempo real, sin que un lado reenviara sin fin el cambio del otro.',
+    volumen: 'Unas 30 actualizaciones al mes',
+  },
+  {
+    titulo: 'Gastos desde la factura',
+    detalle:
+      'La factura en PDF entraba a una carpeta de Drive, la IA (Gemini) leía sus datos y el gasto se creaba en Odoo con la factura adjunta. Si algo fallaba, llegaba una alerta por correo.',
+    volumen: 'Unas 20 facturas al mes',
+  },
+];
+
+export const notaIntegraciones = `Scripts de Google Apps Script, de dic. 2025 a abr. 2026. No suman a los ${cifrasErp.modulos} módulos.`;
 
 export const reservas = [
   'El sistema y los datos son de BBA Pack: aquí no hay capturas del ERP real ni nombres de personas.',

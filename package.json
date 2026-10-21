@@ -10,6 +10,8 @@
     "preview": "astro preview",
     "check": "astro check",
     "cv": "astro build && node scripts/cv-pdf.mjs",
+    "cv:feria": "node scripts/cv-pdf.mjs --feria",
+    "imagenes": "astro build && node scripts/imagenes.mjs",
     "revisar": "node scripts/revisar-dist.mjs"
   },
   "dependencies": {

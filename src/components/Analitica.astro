@@ -1,0 +1,32 @@
+---
+/**
+ * Google Analytics 4, solo en el sitio publicado y solo con `GA4_ID` puesto.
+ *
+ * No carga en `astro dev` ni en un navegador automatizado o headless: así no se
+ * cuentan como visitas las impresiones del CV a PDF ni las capturas de
+ * `npm run imagenes`. Edge headless dice `navigator.webdriver = false`, por eso
+ * también se mira el user agent.
+ */
+import { GA4_ID } from '../data/medicion.ts';
+
+const activa = GA4_ID !== null && import.meta.env.PROD;
+---
+
+{
+  activa && (
+    <script is:inline define:vars={{ id: GA4_ID }}>
+      if (!navigator.webdriver && !/Headless/.test(navigator.userAgent)) {
+        window.dataLayer = window.dataLayer || [];
+        window.gtag = function () {
+          window.dataLayer.push(arguments);
+        };
+        window.gtag('js', new Date());
+        window.gtag('config', id);
+        const etiqueta = document.createElement('script');
+        etiqueta.async = true;
+        etiqueta.src = `https://www.googletagmanager.com/gtag/js?id=${id}`;
+        document.head.appendChild(etiqueta);
+      }
+    </script>
+  )
+}

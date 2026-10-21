@@ -1,0 +1,34 @@
+---
+/**
+ * Etiquetas para compartir la página en LinkedIn, WhatsApp o X: título,
+ * descripción y su tarjeta og:image. La tarjeta sale de `src/data/og.ts` y
+ * `npm run imagenes` la captura a `public/og/<slug>.jpg`.
+ */
+import { ANCHO_OG, ALTO_OG, tarjetaOg } from '../data/og.ts';
+import { urlAbsoluta } from '../utils/rutas.ts';
+
+interface Props {
+  titulo: string;
+  descripcion: string;
+  /** URL canónica de la página. */
+  url: string;
+  /** Slug de la tarjeta en og.ts. */
+  imagen: string;
+}
+
+const { titulo, descripcion, url, imagen } = Astro.props;
+const tarjeta = tarjetaOg(imagen);
+const urlImagen = urlAbsoluta(`/og/${tarjeta.slug}.jpg`, Astro.site);
+---
+
+<meta property="og:type" content="profile" />
+<meta property="og:title" content={titulo} />
+<meta property="og:description" content={descripcion} />
+<meta property="og:url" content={url} />
+<meta property="og:locale" content="es_PE" />
+<meta property="og:image" content={urlImagen} />
+<meta property="og:image:type" content="image/jpeg" />
+<meta property="og:image:width" content={String(ANCHO_OG)} />
+<meta property="og:image:height" content={String(ALTO_OG)} />
+<meta property="og:image:alt" content={`${tarjeta.titulo}. ${tarjeta.bajada}`} />
+<meta name="twitter:card" content="summary_large_image" />

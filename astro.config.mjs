@@ -13,6 +13,10 @@ export default defineConfig({
   site: SITE,
   base: BASE,
   trailingSlash: 'ignore',
+  // URLs viejas que siguen enlazadas desde LinkedIn y Symplicity.
+  redirects: {
+    '/casos/decisiones-con-datos': '/casos/juego-de-negocios',
+  },
   // Fuentes autoalojadas: el CV en PDF y la web usan las mismas, sin pedir nada
   // a Google en runtime.
   fonts: [

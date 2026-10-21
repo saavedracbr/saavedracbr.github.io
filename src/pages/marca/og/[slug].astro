@@ -1,0 +1,111 @@
+---
+/**
+ * Tarjeta al compartir de una página, 1200×630. `npm run imagenes` la captura a
+ * `public/og/<slug>.png`, y Base.astro la enlaza en `og:image`. Los textos
+ * salen de `src/data/og.ts`.
+ */
+import Pieza from '../../../components/marca/Pieza.astro';
+import { ANCHO_OG, ALTO_OG, tarjetasOg, type TarjetaOg } from '../../../data/og.ts';
+import { persona } from '../../../data/perfil.ts';
+import { urlVisible } from '../../../utils/rutas.ts';
+
+export function getStaticPaths() {
+  return tarjetasOg.map((tarjeta) => ({ params: { slug: tarjeta.slug }, props: { tarjeta } }));
+}
+
+const { tarjeta } = Astro.props as { tarjeta: TarjetaOg };
+---
+
+<Pieza titulo={`Tarjeta ${tarjeta.slug}`} ancho={ANCHO_OG} alto={ALTO_OG}>
+  <div class="tarjeta">
+    <div>
+      <p class="antetitulo">{tarjeta.antetitulo}</p>
+      <p class="titulo">{tarjeta.titulo}</p>
+      <p class="bajada">{tarjeta.bajada}</p>
+      {
+        tarjeta.datos && (
+          <ul class="datos">
+            {tarjeta.datos.map((dato) => (
+              <li>{dato}</li>
+            ))}
+          </ul>
+        )
+      }
+    </div>
+    <p class="firma">
+      <span class="nombre">{persona.nombreCorto}</span>
+      <span class="web">{urlVisible(persona.web)}</span>
+    </p>
+  </div>
+</Pieza>
+
+<style>
+  .tarjeta {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 100%;
+    box-sizing: border-box;
+    padding: 60px 64px 52px;
+    max-width: 900px;
+  }
+
+  .antetitulo {
+    font-size: 19px;
+  }
+
+  .titulo {
+    margin-top: 18px !important;
+    font-size: 58px;
+    line-height: 1.08;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .bajada {
+    margin-top: 20px !important;
+    max-width: 800px;
+    font-size: 25px;
+    line-height: 1.4;
+    color: #b9c0cb;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .datos {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 24px 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .datos li {
+    padding: 6px 14px;
+    border: 1px solid #3f8fc4;
+    border-radius: 999px;
+    font-size: 18px;
+    font-weight: 500;
+    color: #d6e9f5;
+    background: rgb(20 92 140 / 0.25);
+  }
+
+  .firma {
+    display: flex;
+    align-items: baseline;
+    gap: 18px;
+    font-size: 24px;
+  }
+
+  .nombre {
+    font-weight: 600;
+  }
+</style>

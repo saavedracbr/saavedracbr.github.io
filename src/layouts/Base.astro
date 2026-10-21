@@ -1,6 +1,9 @@
 ---
 import { Font } from 'astro:assets';
+import Analitica from '../components/Analitica.astro';
+import Compartir from '../components/Compartir.astro';
 import { persona } from '../data/perfil.ts';
+import { GA4_ID } from '../data/medicion.ts';
 import { ruta, urlAbsoluta } from '../utils/rutas.ts';
 import '../styles/global.css';
 
@@ -8,9 +11,11 @@ interface Props {
   titulo: string;
   descripcion: string;
   noindex?: boolean;
+  /** Tarjeta al compartir: un slug de `src/data/og.ts`. */
+  imagen?: string;
 }
 
-const { titulo, descripcion, noindex = false } = Astro.props;
+const { titulo, descripcion, noindex = false, imagen = 'inicio' } = Astro.props;
 
 const tituloCompleto = titulo.includes(persona.nombreCorto) ? titulo : `${titulo} | ${persona.nombreCorto}`;
 const rutaCanonica = Astro.url.pathname.endsWith('/') ? Astro.url.pathname : `${Astro.url.pathname}/`;
@@ -18,16 +23,20 @@ const canonica = new URL(rutaCanonica, Astro.site).href;
 
 // Navegación: solo lo que ya existe. Demos y Certificaciones se suman cuando
 // tengan página. En el celular Inicio se oculta: el nombre ya lleva ahí.
-const navegacion = [
+// /dashboard se enlaza desde Proyectos, y la marca como sección actual.
+const navegacion: { etiqueta: string; href: string; incluye?: string[] }[] = [
   { etiqueta: 'Inicio', href: '/' },
   { etiqueta: 'ERP', href: '/erp' },
   { etiqueta: 'Casos', href: '/casos' },
-  { etiqueta: 'Dashboard', href: '/dashboard' },
+  { etiqueta: 'Proyectos', href: '/proyectos', incluye: ['/dashboard'] },
   { etiqueta: 'CV', href: '/cv' },
 ];
 const actual = Astro.url.pathname.replace(/\/$/, '') || '/';
 // Una sección queda marcada también en sus subpáginas (/casos/turnos-produccion).
-const esActual = (href: string) => actual === href || (href !== '/' && actual.startsWith(`${href}/`));
+const esActual = (item: (typeof navegacion)[number]) =>
+  [item.href, ...(item.incluye ?? [])].some(
+    (href) => actual === href || (href !== '/' && actual.startsWith(`${href}/`)),
+  );
 
 const personaJsonLd = {
   '@context': 'https://schema.org',
@@ -51,15 +60,12 @@ const personaJsonLd = {
     <meta name="description" content={descripcion} />
     <link rel="canonical" href={canonica} />
     {noindex && <meta name="robots" content="noindex" />}
-    <meta property="og:type" content="profile" />
-    <meta property="og:title" content={tituloCompleto} />
-    <meta property="og:description" content={descripcion} />
-    <meta property="og:url" content={canonica} />
-    <meta property="og:locale" content="es_PE" />
+    <Compartir titulo={tituloCompleto} descripcion={descripcion} url={canonica} imagen={imagen} />
     <meta name="theme-color" content="#145c8c" />
     <Font cssVariable="--font-body" preload />
     <Font cssVariable="--font-mono" />
     <script type="application/ld+json" set:html={JSON.stringify(personaJsonLd)} />
+    <Analitica />
   </head>
   <body class="min-h-dvh flex flex-col">
     <a
@@ -79,9 +85,9 @@ const personaJsonLd = {
                     href={ruta(item.href)}
                     class:list={[
                       'no-underline hover:text-[var(--acento)]',
-                      esActual(item.href) ? 'text-[var(--acento)] font-medium' : 'text-[var(--texto-suave)]',
+                      esActual(item) ? 'text-[var(--acento)] font-medium' : 'text-[var(--texto-suave)]',
                     ]}
-                    aria-current={actual === item.href ? 'page' : esActual(item.href) ? 'true' : undefined}
+                    aria-current={actual === item.href ? 'page' : esActual(item) ? 'true' : undefined}
                   >
                     {item.etiqueta}
                   </a>
@@ -104,6 +110,7 @@ const personaJsonLd = {
           <a href={`mailto:${persona.email}`} class="hover:text-[var(--acento)]">{persona.email}</a>
           <a href={persona.linkedin} class="hover:text-[var(--acento)]" rel="me">LinkedIn</a>
         </p>
+        {GA4_ID && <p class="w-full">Este sitio mide visitas de forma agregada con Google Analytics.</p>}
       </div>
     </footer>
   </body>

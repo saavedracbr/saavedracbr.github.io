@@ -14,7 +14,7 @@ const { titulo, tipo, pasos, nota } = Astro.props;
   <figcaption class="font-semibold">{titulo}</figcaption>
   {
     tipo === 'flujo' ? (
-      <ol class="flujo mt-5">
+      <ol class:list={['flujo mt-5', pasos.length > 4 && 'serpiente']}>
         {pasos.map((paso, i) => (
           <li class="rounded-[var(--radius-card)] border border-[var(--borde)] bg-[var(--fondo)] p-4">
             <span class="font-mono text-eyebrow text-[var(--acento)]">{String(i + 1).padStart(2, '0')}</span>
@@ -71,6 +71,40 @@ const { titulo, tipo, pasos, nota } = Astro.props;
       top: 50%;
       bottom: auto;
       transform: translateY(-50%);
+    }
+
+    /* Con 5 o 6 pasos, seis columnas no se leen: van de a 3 en zigzag. La fila
+       de abajo se lee de derecha a izquierda, así el paso 4 queda bajo el 3. */
+    .flujo.serpiente {
+      grid-auto-flow: row;
+      grid-template-columns: repeat(3, 1fr);
+    }
+
+    .flujo.serpiente > li:nth-child(4) {
+      grid-area: 2 / 3;
+    }
+
+    .flujo.serpiente > li:nth-child(5) {
+      grid-area: 2 / 2;
+    }
+
+    .flujo.serpiente > li:nth-child(6) {
+      grid-area: 2 / 1;
+    }
+
+    .flujo.serpiente > li:nth-child(3)::after {
+      content: '↓';
+      left: 50%;
+      right: auto;
+      top: auto;
+      bottom: -1.55rem;
+      transform: translateX(-50%);
+    }
+
+    .flujo.serpiente > li:nth-child(n + 4):not(:last-child)::after {
+      content: '←';
+      left: -1.4rem;
+      right: auto;
     }
   }
 </style>

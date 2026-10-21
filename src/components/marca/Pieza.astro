@@ -1,0 +1,109 @@
+---
+/**
+ * Lienzo de una pieza de marca: una página de /marca dibujada a su tamaño exacto,
+ * que `npm run imagenes` captura a PNG. No es para visitar: va con `noindex` y
+ * sin enlaces.
+ *
+ * El fondo es el maestro (prompt B1) si ya está en `src/assets/marca/`, con sus
+ * detalles a la derecha. Mientras no esté, usa el de Zoom (B0) en espejo, para
+ * que sus estaciones queden a la derecha y el texto a la izquierda. `escala` es
+ * el ancho de ese fondo de respaldo, relativo al lienzo.
+ */
+import { Font, getImage } from 'astro:assets';
+import fondoZoom from '../../assets/marca/fondo-zoom.jpg';
+import { persona } from '../../data/perfil.ts';
+
+interface Props {
+  titulo: string;
+  ancho: number;
+  alto: number;
+  escala?: number;
+}
+
+const { titulo, ancho, alto, escala = 1.25 } = Astro.props;
+
+const maestros = Object.values(
+  import.meta.glob<{ default: ImageMetadata }>('../../assets/marca/fondo-maestro.{png,jpg,jpeg,webp}', {
+    eager: true,
+  }),
+);
+const maestro = maestros[0]?.default;
+const anchoFondo = Math.round(maestro ? ancho : ancho * escala);
+const fondo = await getImage({ src: maestro ?? fondoZoom, width: anchoFondo, format: 'jpg', quality: 90 });
+const estiloFondo = maestro
+  ? `background-image: url(${fondo.src}); background-size: cover; background-position: right center;`
+  : `background-image: url(${fondo.src}); background-size: ${anchoFondo}px auto; background-position: left top; transform: scaleX(-1);`;
+---
+
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content={`width=${ancho}`} />
+    <meta name="robots" content="noindex" />
+    <title>{titulo} – {persona.nombre}</title>
+    <Font cssVariable="--font-body" preload />
+    <Font cssVariable="--font-mono" />
+  </head>
+  <body>
+    <main class="lienzo" style={`width: ${ancho}px; height: ${alto}px;`}>
+      <div class="fondo" style={estiloFondo}></div>
+      <div class="velo"></div>
+      <slot />
+    </main>
+
+    <style is:global>
+      html,
+      body {
+        margin: 0;
+        background: #151a21;
+      }
+
+      .lienzo {
+        position: relative;
+        overflow: hidden;
+        background: #151a21;
+        color: #f6f7f9;
+        font-family: var(--font-body), 'Segoe UI', Arial, sans-serif;
+      }
+
+      .fondo,
+      .velo {
+        position: absolute;
+        inset: 0;
+      }
+
+      .fondo {
+        background-repeat: no-repeat;
+      }
+
+      /* Oscurece el lado del texto para que se lea sobre cualquier fondo. */
+      .velo {
+        background: linear-gradient(
+          90deg,
+          rgb(21 26 33 / 0.97) 0%,
+          rgb(21 26 33 / 0.9) 50%,
+          rgb(21 26 33 / 0.35) 78%,
+          rgb(21 26 33 / 0) 100%
+        );
+      }
+
+      .lienzo p {
+        margin: 0;
+      }
+
+      .antetitulo {
+        font-family: var(--font-mono), Consolas, monospace;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: #77b3d9;
+      }
+
+      .web {
+        font-weight: 600;
+        color: #77b3d9;
+      }
+    </style>
+  </body>
+</html>
