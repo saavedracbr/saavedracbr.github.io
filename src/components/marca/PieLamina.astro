@@ -1,0 +1,18 @@
+---
+/** Firma al pie de una lámina de carrusel, con su número y "Desliza" salvo en la última. */
+import { persona } from '../../data/perfil.ts';
+import { urlVisible } from '../../utils/rutas.ts';
+
+interface Props {
+  numero: number;
+  total: number;
+}
+
+const { numero, total } = Astro.props;
+const ultima = numero === total;
+---
+
+<p class="pie">
+  <span><span class="nombre">{persona.nombreCorto}</span> · Estudiante de Ingeniería Industrial</span>
+  <span class="sigue">{ultima ? urlVisible(persona.web) : `${numero}/${total} · Desliza →`}</span>
+</p>

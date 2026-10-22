@@ -1,0 +1,175 @@
+---
+/**
+ * Carrusel de LinkedIn: un documento PDF de láminas de 1080×1350 (4:5).
+ * `npm run carruseles` imprime cada página de `/marca/carrusel/` a
+ * `docs/marca/carrusel-<slug>.pdf`, que no se publica: lo subes tú al post.
+ *
+ * Cada lámina es una `<section class="lamina">` y ocupa una página del PDF. El
+ * fondo claro es el mismo de las ilustraciones (prompts B3). No es para visitar:
+ * va con `noindex` y sin enlaces.
+ */
+import { Font } from 'astro:assets';
+import { persona } from '../../data/perfil.ts';
+
+interface Props {
+  titulo: string;
+}
+
+const { titulo } = Astro.props;
+---
+
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=1080" />
+    <meta name="robots" content="noindex" />
+    <title>{titulo} – {persona.nombre}</title>
+    <Font cssVariable="--font-body" preload />
+    <Font cssVariable="--font-mono" />
+  </head>
+  <body>
+    <slot />
+
+    <style is:global>
+      @page {
+        size: 1080px 1350px;
+        margin: 0;
+      }
+
+      html,
+      body {
+        margin: 0;
+        background: #f6f7f9;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+
+      .lamina {
+        position: relative;
+        box-sizing: border-box;
+        width: 1080px;
+        height: 1350px;
+        overflow: hidden;
+        padding: 96px 88px 88px;
+        display: flex;
+        flex-direction: column;
+        background: #f6f7f9;
+        color: #151a21;
+        font-family: var(--font-body), 'Segoe UI', Arial, sans-serif;
+        break-after: page;
+      }
+
+      .lamina:last-child {
+        break-after: auto;
+      }
+
+      /* Sin especificidad, para que los márgenes de cada clase ganen. */
+      :where(.lamina) :where(p, h1, h2, ul) {
+        margin: 0;
+      }
+
+      /* Con el margen automático del pie, el contenido queda centrado en vertical. */
+      .lamina > :first-child {
+        margin-top: auto;
+      }
+
+      .antetitulo {
+        font-family: var(--font-mono), Consolas, monospace;
+        font-size: 26px;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: #145c8c;
+      }
+
+      .lamina h1 {
+        margin-top: 28px;
+        font-size: 84px;
+        line-height: 1.04;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+      }
+
+      .lamina h2 {
+        margin-top: 28px;
+        font-size: 68px;
+        line-height: 1.08;
+        font-weight: 600;
+        letter-spacing: -0.015em;
+      }
+
+      .texto {
+        margin-top: 40px;
+        font-size: 42px;
+        line-height: 1.38;
+        color: #2f3a48;
+      }
+
+      .texto + .texto {
+        margin-top: 28px;
+      }
+
+      .acento {
+        color: #145c8c;
+        font-weight: 600;
+      }
+
+      .puntos {
+        margin-top: 44px;
+        padding: 0;
+        list-style: none;
+        display: grid;
+        gap: 28px;
+        font-size: 42px;
+        line-height: 1.3;
+        color: #2f3a48;
+      }
+
+      .puntos li {
+        position: relative;
+        padding-left: 44px;
+      }
+
+      .puntos li::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 18px;
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: #3f8fc4;
+      }
+
+      .ilustracion {
+        display: block;
+        width: 100%;
+        height: auto;
+        border-radius: 20px;
+      }
+
+      /* Firma al pie de cada lámina; "Desliza" en todas menos la última. */
+      .pie {
+        margin-top: auto;
+        padding-top: 32px;
+        border-top: 2px solid #d5dbe3;
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        font-size: 26px;
+        color: #4a5563;
+      }
+
+      .pie .nombre {
+        font-weight: 600;
+        color: #151a21;
+      }
+
+      .pie .sigue {
+        font-family: var(--font-mono), Consolas, monospace;
+        color: #145c8c;
+      }
+    </style>
+  </body>
+</html>

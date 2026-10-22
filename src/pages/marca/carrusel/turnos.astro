@@ -1,0 +1,166 @@
+---
+/**
+ * Carrusel del post 1: "La hoja de turnos que se imprimía todos los días".
+ * Los textos salen del caso `turnos-produccion` (casos.ts), para no decir nada
+ * que el caso no diga; aquí solo se acortan los títulos. `npm run carruseles` lo
+ * imprime a `docs/marca/carrusel-turnos.pdf`.
+ */
+import { Image } from 'astro:assets';
+import Carrusel from '../../../components/marca/Carrusel.astro';
+import PieLamina from '../../../components/marca/PieLamina.astro';
+import { casos } from '../../../data/casos.ts';
+import { procesos } from '../../../data/erp.ts';
+import { persona } from '../../../data/perfil.ts';
+import { urlVisible } from '../../../utils/rutas.ts';
+
+const caso = casos.find((c) => c.slug === 'turnos-produccion');
+const proceso = procesos.find((p) => p.caso.slug === 'turnos-produccion');
+if (!caso?.demoUrl || !proceso) throw new Error('carrusel/turnos: falta el caso de turnos o su demo.');
+
+const [odoo, planta] = caso.diagramas[1].pasos;
+const TOTAL = 7;
+---
+
+<Carrusel titulo="Carrusel: la hoja de turnos">
+  <section class="lamina">
+    <p class="antetitulo">Caso · El ERP de una planta</p>
+    <h1>La hoja de turnos que se imprimía todos los días</h1>
+    <Image src={proceso.ilustracion.src} alt="" width={904} loading="eager" class="ilustracion portada" />
+    <PieLamina numero={1} total={TOTAL} />
+  </section>
+
+  <section class="lamina">
+    <p class="antetitulo">Antes</p>
+    <h2>Excel e impresora, cada día</h2>
+    <p class="texto">{caso.problema[0]}</p>
+    <p class="texto acento">{caso.problema[1]}</p>
+    <PieLamina numero={2} total={TOTAL} />
+  </section>
+
+  <section class="lamina">
+    <p class="antetitulo">Lo que hice</p>
+    <h2>Llevé la hoja al ERP, tal como la usa la planta</h2>
+    <ul class="puntos">
+      <li>Por equipo, día y turno.</li>
+      <li>A cada operario se le asigna proceso, estación de trabajo, producto y cantidad.</li>
+      <li>Al elegir el equipo se cargan sus miembros con su última asignación: armar la hoja ya no es empezar de cero.</li>
+      <li>Se imprime en PDF, agrupada por proceso o en una sola lista.</li>
+    </ul>
+    <PieLamina numero={3} total={TOTAL} />
+  </section>
+
+  <section class="lamina">
+    <p class="antetitulo">El problema escondido</p>
+    <h2>¿De qué día es un turno de 22:00 a 06:00?</h2>
+    <p class="texto">
+      Odoo fecha la jornada en hora UTC. En Perú (UTC−5), cualquier turno que empezara desde las 19:00 pasaba al día
+      siguiente.
+    </p>
+    <div class="dias" aria-hidden="true">
+      <span></span>
+      <span class="cabecera">Día de la hoja</span>
+      <span class="cabecera">Día siguiente</span>
+      <span class="fila">{odoo.titulo}</span>
+      <span class="celda"></span>
+      <span class="celda"><span class="turno mal">22:00 – 06:00</span></span>
+      <span class="fila">{planta.titulo}</span>
+      <span class="celda"><span class="turno">22:00 – 06:00</span></span>
+      <span class="celda"></span>
+    </div>
+    <p class="texto"><span class="acento">{planta.titulo}:</span> {planta.detalle}</p>
+    <PieLamina numero={4} total={TOTAL} />
+  </section>
+
+  <section class="lamina">
+    <p class="antetitulo">Los días que no son normales</p>
+    <h2>Cambios a mitad del turno</h2>
+    <p class="texto">{caso.solucion[3]}</p>
+    <p class="texto">{caso.solucion[2]}</p>
+    <PieLamina numero={5} total={TOTAL} />
+  </section>
+
+  <section class="lamina">
+    <p class="antetitulo">Resultado · {caso.estado}</p>
+    <h2>Del Excel a la nómina, sin corregir a mano</h2>
+    <ul class="puntos">{caso.resultado.map((r) => <li>{r}</li>)}</ul>
+    <PieLamina numero={6} total={TOTAL} />
+  </section>
+
+  <section class="lamina">
+    <p class="antetitulo">Pruébalo</p>
+    <h2>Armé una demo con datos ficticios</h2>
+    <p class="texto">{caso.demo}</p>
+    <p class="enlace">{urlVisible(persona.web)}{caso.demoUrl}</p>
+    <p class="texto">
+      Soy estudiante de Ingeniería Industrial en la U. de Lima y busco prácticas en procesos, transformación digital o
+      planeamiento.
+    </p>
+    <PieLamina numero={7} total={TOTAL} />
+  </section>
+</Carrusel>
+
+<style>
+  .portada {
+    margin-top: 56px;
+  }
+
+  /* Dos filas, dos días: dónde cae el turno de noche según cada regla. */
+  .dias {
+    margin-top: 48px;
+    display: grid;
+    grid-template-columns: 300px 1fr 1fr;
+    gap: 14px;
+    align-items: stretch;
+    font-size: 28px;
+  }
+
+  .cabecera {
+    font-family: var(--font-mono), Consolas, monospace;
+    font-size: 24px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #4a5563;
+    text-align: center;
+  }
+
+  .fila {
+    display: flex;
+    align-items: center;
+    font-weight: 600;
+  }
+
+  .celda {
+    min-height: 110px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px dashed #c3ccd8;
+    border-radius: 16px;
+    background: #ffffff;
+  }
+
+  .turno {
+    padding: 14px 22px;
+    border-radius: 12px;
+    background: #145c8c;
+    color: #ffffff;
+    font-weight: 600;
+  }
+
+  .turno.mal {
+    background: #ffffff;
+    color: #9a3b3b;
+    border: 3px solid #9a3b3b;
+  }
+
+  .enlace {
+    margin-top: 44px;
+    padding: 28px 32px;
+    border-radius: 20px;
+    background: #145c8c;
+    color: #ffffff;
+    font-size: 44px;
+    font-weight: 600;
+    text-align: center;
+  }
+</style>

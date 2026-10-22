@@ -6,8 +6,19 @@
  * Mismas reglas que `perfil.ts`: solo lo verificado, "en piloto" mientras lo
  * esté, sin nombrar al partner y sin detalles de la red ni de la seguridad.
  */
+import type { ImageMetadata } from 'astro';
 import { cifrasErp } from './perfil.ts';
 import { casos, type Caso } from './casos.ts';
+// Ilustraciones hechas con IA (prompts B3 del plan v3): sin texto, cifras ni pantallas.
+import imgTurnos from '../assets/procesos/turnos-produccion.jpg';
+import imgHuellero from '../assets/procesos/huellero-planilla.jpg';
+import imgRucFactura from '../assets/procesos/ruc-factura.jpg';
+import imgPedidoDespacho from '../assets/procesos/pedido-despacho.jpg';
+
+export interface Ilustracion {
+  src: ImageMetadata;
+  alt: string;
+}
 
 export interface PasoProceso {
   titulo: string;
@@ -19,6 +30,7 @@ export interface PasoProceso {
 /** Título, bajada y "útil para" salen del caso que cuenta el proceso. */
 export interface Proceso {
   caso: Caso;
+  ilustracion: Ilustracion;
   pasos: PasoProceso[];
   modulos: number;
 }
@@ -29,9 +41,13 @@ export interface Hito {
   detalle: string;
 }
 
-const definicion: { caso: string; pasos: PasoProceso[] }[] = [
+const definicion: { caso: string; ilustracion: Ilustracion; pasos: PasoProceso[] }[] = [
   {
     caso: 'turnos-produccion',
+    ilustracion: {
+      src: imgTurnos,
+      alt: 'Ilustración: una pizarra de turnos con su calendario y un reloj, junto a tres estaciones de trabajo de la planta unidas por flechas.',
+    },
     pasos: [
       {
         titulo: 'Hoja diaria de turnos',
@@ -53,6 +69,10 @@ const definicion: { caso: string; pasos: PasoProceso[] }[] = [
   },
   {
     caso: 'huellero-planilla',
+    ilustracion: {
+      src: imgHuellero,
+      alt: 'Ilustración: un lector de huella en la pared, conectado a una caja de respaldo, a la nube y a una hoja de planilla.',
+    },
     pasos: [
       {
         titulo: 'Marcas en tiempo real',
@@ -74,6 +94,10 @@ const definicion: { caso: string; pasos: PasoProceso[] }[] = [
   },
   {
     caso: 'ruc-factura',
+    ilustracion: {
+      src: imgRucFactura,
+      alt: 'Ilustración: una guía de remisión y una factura unidas con un clip, un sello de verificación y un camión de despacho.',
+    },
     pasos: [
       {
         titulo: 'Cliente validado con SUNAT',
@@ -114,6 +138,10 @@ const definicion: { caso: string; pasos: PasoProceso[] }[] = [
   },
   {
     caso: 'pedido-despacho',
+    ilustracion: {
+      src: imgPedidoDespacho,
+      alt: 'Ilustración: un pedido que pasa a una orden de producción, a la estantería del almacén y al camión de despacho.',
+    },
     pasos: [
       {
         titulo: 'De la oportunidad al pedido',
@@ -149,10 +177,10 @@ const definicion: { caso: string; pasos: PasoProceso[] }[] = [
   },
 ];
 
-export const procesos: Proceso[] = definicion.map(({ caso: slug, pasos }) => {
+export const procesos: Proceso[] = definicion.map(({ caso: slug, ilustracion, pasos }) => {
   const caso = casos.find((c) => c.slug === slug);
   if (!caso) throw new Error(`erp.ts: no hay un caso "${slug}" en casos.ts.`);
-  return { caso, pasos, modulos: pasos.reduce((total, paso) => total + paso.modulos, 0) };
+  return { caso, ilustracion, pasos, modulos: pasos.reduce((total, paso) => total + paso.modulos, 0) };
 });
 
 // Si alguien agrega o quita un paso sin cuadrar las cifras, el build falla aquí.
