@@ -42,6 +42,25 @@ const enlace =
       </noscript>
     </header>
 
+    {/* El teaser no se descarga hasta que alguien le da play. En el celular va la versión 4:5, con subtítulos más grandes. */}
+    <figure class="no-imprimir mt-10 max-w-3xl">
+      <video id="teaser" class="dt-teaser" controls muted playsinline preload="none" aria-describedby="teaser-texto">
+        <source src={ruta('/demos/turnos/teaser-4x5.mp4')} type="video/mp4" media="(max-width: 639px)" />
+        <source src={ruta('/demos/turnos/teaser.mp4')} type="video/mp4" />
+      </video>
+      <script
+        is:inline
+        define:vars={{ ancho: ruta('/demos/turnos/teaser.webp'), alto: ruta('/demos/turnos/teaser-4x5.webp') }}
+      >
+        // El póster sigue al mismo corte que el <source media>: cada formato con el suyo, y se baja uno solo.
+        document.getElementById('teaser').poster = matchMedia('(max-width: 639px)').matches ? alto : ancho;
+      </script>
+      <figcaption id="teaser-texto" class="mt-3 text-sm text-[var(--texto-suave)]">
+        Video de 28 s, sin audio: un turno de noche de 22:00 a 06:00 en una sola jornada, el aviso cuando dos tramos se
+        cruzan, de qué día es el turno con la regla de la planta y con Odoo estándar (UTC), y la hoja lista para imprimir.
+      </figcaption>
+    </figure>
+
     <section class="no-imprimir mt-12" aria-labelledby="t-jornada">
       <h2 id="t-jornada" class="dt-h2">1. Equipo y jornada</h2>
       <div class="mt-5 grid gap-4 sm:grid-cols-3 lg:grid-cols-5">
@@ -752,6 +771,24 @@ const enlace =
   :root[data-theme='dark'] .dt {
     --aviso: #fdba74;
     --aviso-suave: #2a160b;
+  }
+
+  /* El teaser: 16:9 en escritorio y 4:5 en el celular, con el mismo corte que el
+     <source media>. El fondo es el del video, para que no se note antes del play. */
+  .dt-teaser {
+    display: block;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 16 / 9;
+    border: 1px solid var(--borde);
+    border-radius: var(--radius-card);
+    background: #0c0f14;
+  }
+
+  @media (max-width: 639px) {
+    .dt-teaser {
+      aspect-ratio: 4 / 5;
+    }
   }
 
   .dt-h2 {
