@@ -344,7 +344,9 @@ export const proyectos: Proyecto[] = [
     resumen:
       'Una sola página web que lee los horarios de la U. de Lima y arma las combinaciones de secciones sin cruces. Es el problema de programar la producción: encajar actividades con restricciones.',
     herramientas: ['HTML', 'JavaScript'],
-    estado: 'Demo próximamente',
+    estado: 'Demo con datos ficticios',
+    // Archivo estático en public/demos/: sin red, sin localStorage y con horarios inventados.
+    pagina: { etiqueta: 'Probar la demo', url: '/demos/planificador/' },
     grupo: 'producto',
     enCv: false,
   },

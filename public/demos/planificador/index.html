@@ -1,0 +1,1436 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Demo pública: sin red. connect-src 'none' impide cualquier fetch, y la página
+     no carga nada de fuera (ni fuentes ni analítica). -->
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'">
+<meta name="robots" content="noindex">
+<meta name="description" content="Demo del Planificador de matrícula: arma combinaciones de secciones sin cruces de horario. Cursos, secciones, docentes y vacantes de ejemplo.">
+<title>Planificador de matrícula · demo</title>
+<style>
+/* ============================================================
+   TEMA
+   ============================================================ */
+:root{
+  --bg:#f4f5f7; --panel:#ffffff; --panel-2:#fafbfc; --texto:#1c2024;
+  --tenue:#65707c; --borde:#dfe3e8; --borde-fuerte:#c4ccd4;
+  --acento:#0b63c5; --acento-suave:#e7f0fb;
+  --ok:#1a7f47; --alerta:#b4520a; --error:#b42318;
+  --sombra:0 1px 2px rgba(16,24,40,.06), 0 4px 12px rgba(16,24,40,.06);
+  --radio:10px;
+  --c0:#0b63c5; --c1:#8b2fb8; --c2:#0e7c66; --c3:#b4520a; --c4:#b42352; --c5:#4a5cc4;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#14171a; --panel:#1c2024; --panel-2:#22272c; --texto:#e6e9ed;
+    --tenue:#98a2b3; --borde:#2e343b; --borde-fuerte:#3d454e;
+    --acento:#5aa2f0; --acento-suave:#16283d;
+    --ok:#4ec27f; --alerta:#e8974a; --error:#f27a71;
+    --sombra:0 1px 2px rgba(0,0,0,.3), 0 4px 12px rgba(0,0,0,.25);
+    --c0:#5aa2f0; --c1:#c07ce8; --c2:#3fbfa0; --c3:#e8974a; --c4:#ef7a9e; --c5:#8b98ee;
+  }
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--texto);
+  font:14px/1.45 "Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+}
+h1,h2,h3{margin:0;font-weight:600;letter-spacing:-.01em}
+button{font:inherit;color:inherit}
+input,select{font:inherit;color:inherit}
+
+/* ============================================================
+   ESTRUCTURA
+   ============================================================ */
+header.top{
+  background:var(--panel); border-bottom:1px solid var(--borde);
+  padding:14px 20px; display:flex; align-items:baseline; gap:14px; flex-wrap:wrap;
+  position:sticky; top:0; z-index:20;
+}
+header.top h1{font-size:17px}
+header.top .sub{color:var(--tenue); font-size:12.5px}
+header.top .archivo{margin-left:auto; color:var(--tenue); font-size:12.5px}
+header.top .archivo b{color:var(--texto); font-weight:600}
+
+.layout{display:grid; grid-template-columns:340px minmax(0,1fr); gap:18px; padding:18px 20px 60px; align-items:start}
+@media (max-width:980px){ .layout{grid-template-columns:minmax(0,1fr)} }
+
+aside{position:sticky; top:66px; display:flex; flex-direction:column; gap:14px; max-height:calc(100vh - 84px); overflow:auto; padding-right:4px}
+@media (max-width:980px){ aside{position:static; max-height:none} }
+
+.card{background:var(--panel); border:1px solid var(--borde); border-radius:var(--radio); box-shadow:var(--sombra)}
+.card > h2{
+  font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--tenue);
+  padding:11px 14px; border-bottom:1px solid var(--borde);
+}
+.card > .cuerpo{padding:14px}
+
+/* ---- aviso de demo ---- */
+header.top .volver{color:var(--acento); font-size:12.5px; text-decoration:none; font-weight:600}
+header.top .volver:hover{text-decoration:underline}
+.demo{
+  margin:18px 20px 0; padding:12px 16px; border-radius:var(--radio); font-size:13px; line-height:1.5;
+  background:var(--acento-suave); border:1px solid var(--acento);
+}
+.demo b{font-weight:600}
+.demo p{margin:0}
+.demo p + p{margin-top:6px; color:var(--tenue); font-size:12px}
+.demo .ir{display:none}
+@media (max-width:980px){
+  .demo .ir{display:inline}
+  main{order:-1}                                 /* en el celular, primero el resultado */
+  header.top{position:static}                    /* fija, taparía un cuarto de pantalla */
+  header.top .archivo{margin-left:0}
+  /* La tabla de secciones entra sin deslizar: un bloque por línea, celdas más
+     justas y sin la columna de docente. Con .tabla-scroll gana a las reglas de abajo. */
+  .tabla-scroll table.secs th, .tabla-scroll table.secs td{padding:5px 4px}
+  .tabla-scroll table.secs th:nth-child(3), .tabla-scroll table.secs td:nth-child(3){display:none}
+  table.secs td.hor .blq{display:block}
+  table.secs td.hor .sep{display:none}
+}
+.demo a{color:var(--acento); font-weight:600}
+.tabla-scroll{overflow-x:auto}
+
+/* ---- controles ---- */
+.fila{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:11px}
+.fila:last-child{margin-bottom:0}
+.fila label{color:var(--tenue)}
+.fila .ctl{display:flex; align-items:center; gap:6px}
+select,input[type=number]{
+  background:var(--panel-2); border:1px solid var(--borde-fuerte); border-radius:7px;
+  padding:5px 7px; min-width:74px;
+}
+input[type=number]{width:74px}
+input[type=checkbox]{width:16px;height:16px;accent-color:var(--acento);margin:0;cursor:pointer}
+.dias{display:flex; gap:5px; flex-wrap:wrap}
+.dias label{
+  display:flex; flex-direction:column; align-items:center; gap:4px; cursor:pointer;
+  border:1px solid var(--borde-fuerte); border-radius:7px; padding:5px 0; width:44px;
+  font-size:11px; color:var(--tenue); background:var(--panel-2); user-select:none;
+}
+.dias label.on{border-color:var(--acento); background:var(--acento-suave); color:var(--acento); font-weight:600}
+.ayuda{color:var(--tenue); font-size:11.5px; line-height:1.4; margin:8px 0 0}
+.slider{display:grid; grid-template-columns:1fr auto; gap:4px 10px; align-items:center; margin-bottom:9px}
+.slider .nom{color:var(--tenue)}
+.slider .val{font-variant-numeric:tabular-nums; color:var(--texto); font-size:12px; min-width:20px; text-align:right}
+.slider input[type=range]{grid-column:1/-1; width:100%; accent-color:var(--acento); margin:0}
+
+button.primario{
+  width:100%; background:var(--acento); color:#fff; border:0; border-radius:8px;
+  padding:11px; font-weight:600; cursor:pointer; transition:.15s; font-size:14.5px;
+}
+button.primario:hover{filter:brightness(1.08)}
+button.primario:disabled{opacity:.5; cursor:not-allowed}
+button.chico{
+  background:var(--panel-2); border:1px solid var(--borde-fuerte); border-radius:7px;
+  padding:4px 10px; cursor:pointer; font-size:12px;
+}
+button.chico:hover{border-color:var(--acento); color:var(--acento)}
+
+/* ---- lista de cursos ---- */
+.curso-item{display:flex; align-items:flex-start; gap:8px; padding:7px 0; border-bottom:1px solid var(--borde)}
+.curso-item:last-child{border-bottom:0}
+.punto{width:9px;height:9px;border-radius:3px;flex:none;margin-top:5px}
+.curso-item .nom{font-size:12.5px; line-height:1.3}
+.curso-item .met{color:var(--tenue); font-size:11px; margin-top:2px}
+.curso-item .met.cero{color:var(--error); font-weight:600}
+.curso-item input[type=checkbox]{margin-top:4px; flex:none}
+.curso-item.oblig .nom{font-weight:600}
+.curso-item .oblig-et{color:var(--acento); font-size:10px; font-weight:600; letter-spacing:.04em}
+
+/* ---- franjas ocupadas ---- */
+.bloq-form{display:grid; grid-template-columns:1fr auto 1fr; gap:6px; align-items:center; margin-bottom:9px}
+.bloq-form select{min-width:0; width:100%}
+.bloq-form .sep{color:var(--tenue); font-size:12px}
+.bloq-form .dia{grid-column:1/-1}
+.bloq-lista{list-style:none; margin:10px 0 0; padding:0}
+.bloq-lista li{
+  display:flex; align-items:center; gap:8px; padding:5px 8px; margin-bottom:5px;
+  background:var(--panel-2); border:1px solid var(--borde); border-radius:7px; font-size:12px;
+}
+.bloq-lista li b{font-variant-numeric:tabular-nums}
+.bloq-lista .quitar{
+  margin-left:auto; background:none; border:0; color:var(--tenue); cursor:pointer;
+  font-size:15px; line-height:1; padding:0 3px;
+}
+.bloq-lista .quitar:hover{color:var(--error)}
+.bloq-vacio{color:var(--tenue); font-size:11.5px; margin:8px 0 0}
+
+/* ---- vacantes ---- */
+.vac-estado{
+  background:var(--panel-2); border:1px solid var(--borde); border-radius:7px;
+  padding:8px 10px; font-size:12px; color:var(--tenue); line-height:1.45;
+}
+.vac-estado.ok{border-color:var(--ok)}
+.vac-estado b{color:var(--texto)}
+#vacAviso:not(:empty){
+  margin-top:9px; font-size:11.5px; line-height:1.45; border-radius:7px; padding:8px 10px;
+  border:1px solid var(--alerta); background:color-mix(in srgb,var(--alerta) 12%,transparent);
+}
+#vacAviso.err{border-color:var(--error); background:color-mix(in srgb,var(--error) 12%,transparent)}
+/* ---- tabla de vacantes a mano ---- */
+.modal{
+  position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:100;
+  display:flex; align-items:center; justify-content:center; padding:20px;
+}
+.modal .caja{
+  background:var(--panel); border:1px solid var(--borde); border-radius:12px;
+  width:100%; max-width:700px; max-height:88vh; display:flex; flex-direction:column;
+  box-shadow:0 16px 48px rgba(0,0,0,.35);
+}
+.modal .cab{padding:14px 18px; border-bottom:1px solid var(--borde)}
+.modal .cab h3{font-size:15px}
+.modal .cab p{margin:5px 0 0; color:var(--tenue); font-size:12px; line-height:1.45}
+.modal .lista{overflow:auto; padding:4px 18px}
+.modal .pie{
+  padding:12px 18px; border-top:1px solid var(--borde); display:flex; align-items:center; gap:10px;
+}
+.modal .pie .cuenta{color:var(--tenue); font-size:12px; margin-right:auto}
+table.manual{width:100%; border-collapse:collapse; font-size:12.5px}
+table.manual th{
+  position:sticky; top:0; background:var(--panel); z-index:1;
+  text-align:left; color:var(--tenue); font-size:10.5px; text-transform:uppercase;
+  letter-spacing:.05em; padding:8px 6px; border-bottom:1px solid var(--borde);
+}
+table.manual td{padding:4px 6px; border-bottom:1px solid var(--borde)}
+table.manual tr.grupo td{
+  padding-top:12px; font-weight:600; border-bottom:1px solid var(--borde-fuerte);
+}
+table.manual tr.grupo .cnt{font-weight:400; color:var(--tenue); font-size:11px}
+table.manual .sec{font-variant-numeric:tabular-nums; font-weight:600; white-space:nowrap}
+table.manual .det{color:var(--tenue); font-size:11.5px}
+table.manual .hor{font-variant-numeric:tabular-nums; white-space:nowrap; color:var(--tenue); font-size:11.5px}
+table.manual input{
+  width:62px; text-align:right; background:var(--panel-2); color:var(--texto);
+  border:1px solid var(--borde-fuerte); border-radius:6px; padding:4px 7px;
+  font-variant-numeric:tabular-nums;
+}
+table.manual input:focus{border-color:var(--acento); outline:none}
+table.manual input.lleno{border-color:var(--ok)}
+.nota-vac{
+  margin-top:10px; font-size:11.5px; color:var(--alerta); display:flex; gap:6px; align-items:baseline;
+}
+table.secs td.vac{text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap}
+table.secs td.vac.sindato{color:var(--alerta); font-weight:600}
+table.secs td.vac.libre{color:var(--tenue)}
+table.secs td.vac.pocas{color:var(--error); font-weight:700}
+
+/* ---- resultados ---- */
+.resumen{
+  display:flex; gap:18px; flex-wrap:wrap; align-items:center;
+  background:var(--panel); border:1px solid var(--borde); border-radius:var(--radio);
+  padding:12px 16px; box-shadow:var(--sombra); margin-bottom:14px;
+}
+.resumen .num{font-size:19px; font-weight:600; font-variant-numeric:tabular-nums}
+.resumen .et{color:var(--tenue); font-size:11.5px; text-transform:uppercase; letter-spacing:.05em}
+.resumen .pag{margin-left:auto; display:flex; align-items:center; gap:8px}
+
+.variante{background:var(--panel); border:1px solid var(--borde); border-radius:var(--radio); box-shadow:var(--sombra); margin-bottom:16px; overflow:hidden}
+.variante > .cab{display:flex; align-items:center; gap:10px; padding:10px 14px; border-bottom:1px solid var(--borde); flex-wrap:wrap}
+.variante > .cab .rank{font-weight:700; font-size:15px}
+.chip{
+  background:var(--panel-2); border:1px solid var(--borde); border-radius:999px;
+  padding:2px 9px; font-size:11.5px; color:var(--tenue); white-space:nowrap;
+}
+.chip b{color:var(--texto); font-weight:600; font-variant-numeric:tabular-nums}
+.variante > .cab .acciones{margin-left:auto; display:flex; gap:6px}
+.variante > .cuerpo{padding:14px; display:grid; grid-template-columns:minmax(0,1fr); gap:14px}
+
+/* ---- grilla semanal ---- */
+.grid{display:grid; grid-template-columns:44px repeat(6,minmax(0,1fr)); font-size:11px; position:relative}
+.grid .dh{
+  text-align:center; font-weight:600; color:var(--tenue); padding:4px 0 6px;
+  font-size:11px; letter-spacing:.04em;
+}
+.grid .dh.exento{color:var(--acento)}
+.grid .dh small{display:block; font-weight:400; font-size:9.5px; letter-spacing:0}
+.grid .colbg{background:var(--panel-2); border-left:1px solid var(--borde)}
+.grid .colbg.exento{background:var(--acento-suave)}
+.grid .colbg.ultima{border-right:1px solid var(--borde)}
+.grid .linea{border-top:1px solid var(--borde); pointer-events:none}
+.grid .hora{color:var(--tenue); text-align:right; padding-right:6px; font-variant-numeric:tabular-nums; font-size:10px; transform:translateY(-.5em)}
+.grid .hora.fin{align-self:end; transform:translateY(.5em)}
+.bloque{
+  border-radius:5px; margin:1px 2px; padding:3px 4px; color:#fff; overflow:hidden;
+  display:flex; flex-direction:column; justify-content:center; line-height:1.2;
+}
+.bloque .b1{font-weight:700; font-size:10.5px}
+.bloque .b2{font-size:9.5px; opacity:.9; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.ocupado{
+  border-radius:5px; margin:1px 2px; overflow:hidden; display:flex; align-items:center;
+  justify-content:center; color:var(--tenue); font-size:9.5px; font-weight:600;
+  border:1px dashed var(--borde-fuerte);
+  background:repeating-linear-gradient(45deg,transparent,transparent 4px,
+             color-mix(in srgb,var(--tenue) 22%,transparent) 4px,
+             color-mix(in srgb,var(--tenue) 22%,transparent) 8px);
+}
+
+/* ---- tabla de secciones ---- */
+table.secs{width:100%; border-collapse:collapse; font-size:12px}
+table.secs th{
+  text-align:left; color:var(--tenue); font-weight:600; font-size:10.5px;
+  text-transform:uppercase; letter-spacing:.05em; padding:5px 8px; border-bottom:1px solid var(--borde);
+}
+table.secs td{padding:5px 8px; border-bottom:1px solid var(--borde); vertical-align:top}
+table.secs tr:last-child td{border-bottom:0}
+table.secs .cod{font-weight:600; font-variant-numeric:tabular-nums; white-space:nowrap}
+table.secs .prof{color:var(--tenue)}
+table.secs .hor{font-variant-numeric:tabular-nums; white-space:nowrap}
+.marca{display:inline-block; width:9px; height:9px; border-radius:3px; margin-right:7px; vertical-align:baseline}
+
+/* ---- avisos ---- */
+.aviso{border-radius:var(--radio); padding:13px 16px; font-size:13px; line-height:1.5; border:1px solid}
+.aviso.info{background:var(--acento-suave); border-color:var(--acento); color:var(--texto)}
+.aviso.err{background:color-mix(in srgb,var(--error) 12%,transparent); border-color:var(--error)}
+.aviso h3{font-size:13.5px; margin-bottom:5px}
+.aviso ul{margin:6px 0 0; padding-left:20px}
+.vacio{color:var(--tenue); text-align:center; padding:56px 20px; line-height:1.6}
+
+/* ---- impresión ---- */
+@media print{
+  header.top,aside,.resumen .pag,.variante .acciones,.demo{display:none !important}
+  body{background:#fff}
+  .layout{display:block; padding:0}
+  .card,.variante,.resumen{box-shadow:none; border-color:#bbb; break-inside:avoid}
+  .variante{margin-bottom:10px}
+  body.imprimiendo .variante{display:none}
+  body.imprimiendo .variante.imprimir{display:block}
+  body.imprimiendo .resumen{display:none}
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <h1>Planificador de matrícula</h1>
+  <span class="sub">Generador de horarios con restricciones · demo</span>
+  <span class="archivo" id="infoArchivo">Horarios de ejemplo</span>
+  <a class="volver" href="/proyectos">← Volver a saavedracbr.com</a>
+</header>
+
+<div class="demo" role="note">
+  <p><b>Demo con datos ficticios.</b> Los cursos, las secciones, los docentes y las vacantes son
+  de ejemplo. Marca los cursos que no puedes dejar, cambia las restricciones y pulsa
+  <b>Generar horarios</b>.<span class="ir"> Las restricciones están <a href="#panel">debajo de los
+  resultados ↓</a></span></p>
+  <p>La herramienta original lee la página de horarios que el alumno guarda desde el sistema de
+  matrícula de la U. de Lima. Es un proyecto personal, no una herramienta oficial de la
+  universidad. Esta página no guarda ni envía nada: todo se calcula en tu navegador.</p>
+</div>
+
+<div class="layout">
+
+  <!-- ================= PANEL DE CONTROL ================= -->
+  <aside id="panel">
+    <div class="card" id="cardCursos" hidden>
+      <h2>Cursos · marca los obligatorios</h2>
+      <div class="cuerpo">
+        <div id="listaCursos"></div>
+        <p class="ayuda">Los cursos marcados aparecen en <b>todos</b> los horarios generados.
+        El resto se combina hasta completar la cantidad de cursos que pediste.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Restricciones (obligatorias)</h2>
+      <div class="cuerpo">
+        <div class="fila">
+          <label for="nCursos">Cantidad de cursos</label>
+          <div class="ctl"><select id="nCursos"></select></div>
+        </div>
+        <div class="fila">
+          <label for="horaMin">No empezar antes de</label>
+          <div class="ctl"><select id="horaMin"></select></div>
+        </div>
+        <div class="fila">
+          <label for="horaMax">No terminar después de</label>
+          <div class="ctl"><select id="horaMax"></select></div>
+        </div>
+        <div class="fila">
+          <label for="huecoMax">Hueco máximo entre clases</label>
+          <div class="ctl"><select id="huecoMax"></select></div>
+        </div>
+        <div class="fila">
+          <label for="sinSabado">Excluir clases los sábados</label>
+          <div class="ctl"><input type="checkbox" id="sinSabado"></div>
+        </div>
+        <div class="fila">
+          <label for="vacantesMin">Vacantes mínimas</label>
+          <div class="ctl"><input type="number" id="vacantesMin" min="0" max="99" step="1" value="0"></div>
+        </div>
+        <p class="ayuda">El hueco máximo es el espacio libre más largo entre dos clases
+        consecutivas del <b>mismo día</b>. La regla de no tener dos clases a la misma hora
+        se aplica siempre. <b>Vacantes mínimas</b> necesita haber cargado los datos de
+        vacantes; con 0 no filtra.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Vacantes por sección</h2>
+      <div class="cuerpo">
+        <div id="vacEstado" class="vac-estado">Sin datos de vacantes cargados.</div>
+        <p class="ayuda">En la herramienta original, las vacantes se capturan del sistema de
+        matrícula. Aquí son de ejemplo, y puedes cambiarlas a mano: prueba subir las
+        <b>vacantes mínimas</b> y ver qué secciones salen.</p>
+        <button class="chico" id="vacManual" style="width:100%;margin-top:6px">
+          Editar vacantes a mano…</button>
+        <div id="vacAviso"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Días virtuales (exentos)</h2>
+      <div class="cuerpo">
+        <div class="dias" id="diasExentos"></div>
+        <p class="ayuda">En los días marcados <b>solo</b> se aplica la regla de no tener dos
+        clases a la misma hora. Se ignoran el rango horario y el hueco máximo, y sus horas
+        muertas no penalizan el puntaje.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Franjas ocupadas</h2>
+      <div class="cuerpo">
+        <div class="bloq-form">
+          <select id="bloqDia" class="dia"></select>
+          <select id="bloqIni"></select>
+          <span class="sep">a</span>
+          <select id="bloqFin"></select>
+        </div>
+        <button class="chico" id="bloqAdd" style="width:100%">+ Añadir franja ocupada</button>
+        <ul class="bloq-lista" id="bloqLista"></ul>
+        <p class="bloq-vacio" id="bloqVacio">Sin franjas ocupadas. Añade aquí trabajo,
+        prácticas u otros compromisos: ninguna clase podrá cruzarse con ellos.</p>
+        <p class="ayuda">Se aplican <b>todos los días</b>, incluidos los marcados como
+        virtuales: una franja ocupada es tiempo en el que no puedes tener clase.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Preferencias (ordenan el resultado)</h2>
+      <div class="cuerpo">
+        <div class="slider">
+          <span class="nom">Evitar horas muertas</span><span class="val" id="vPesoHuecos">3</span>
+          <input type="range" id="pesoHuecos" min="0" max="10" step="1" value="3">
+        </div>
+        <div class="slider">
+          <span class="nom">Maximizar días libres</span><span class="val" id="vPesoDias">3</span>
+          <input type="range" id="pesoDias" min="0" max="10" step="1" value="3">
+        </div>
+        <div class="slider">
+          <span class="nom">Penalizar sábados</span><span class="val" id="vPesoSabado">2</span>
+          <input type="range" id="pesoSabado" min="0" max="10" step="1" value="2">
+        </div>
+        <div class="fila" style="margin-top:12px">
+          <label for="franja">Franja preferida</label>
+          <div class="ctl"><select id="franja">
+            <option value="">Sin preferencia</option>
+            <option value="10">Mañana</option>
+            <option value="15">Tarde</option>
+            <option value="20">Noche</option>
+          </select></div>
+        </div>
+        <div class="slider" id="wrapPesoFranja" hidden>
+          <span class="nom">Fuerza de la franja</span><span class="val" id="vPesoFranja">3</span>
+          <input type="range" id="pesoFranja" min="0" max="10" step="1" value="3">
+        </div>
+      </div>
+    </div>
+
+    <button class="primario" id="btnGenerar" disabled>Generar horarios</button>
+  </aside>
+
+  <!-- ================= RESULTADOS ================= -->
+  <main>
+    <div id="salida">
+      <div class="vacio">Cargando los horarios de ejemplo…</div>
+    </div>
+  </main>
+</div>
+
+<script>
+"use strict";
+/* ============================================================================
+   PLANIFICADOR DE MATRÍCULA — demo con datos ficticios
+   Archivo único, sin dependencias ni red. Módulos: horarios de ejemplo ·
+   modelo · motor · puntaje · render. La herramienta original, en vez de los
+   horarios de ejemplo, lee la página de horarios guardada desde la ULima.
+   ============================================================================ */
+
+const DIAS       = ["LUN","MAR","MIE","JUE","VIE","SAB"];
+const DIAS_LARGO = ["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
+
+/* ====================== 1. HORARIOS DE EJEMPLO ============================= */
+/* La herramienta original lee la página "Por horarios" que el alumno guarda desde
+   el sistema de matrícula, y las vacantes que captura de ahí. En esta demo todo
+   es inventado: cursos, secciones, docentes y vacantes.
+   Cada sección es [código, docente, horario, vacantes]; las vacantes son un
+   número, "X" si la sección no controla vacantes, o null si no hay dato.       */
+const EJEMPLO = [
+  {codigo:"D101", creditos:"4", nombre:"GESTIÓN DE OPERACIONES", secciones:[
+    ["601", "Docente A", "LUN 8-10 · MIE 8-10",     14],
+    ["602", "Docente B", "MAR 14-16 · VIE 14-16",    3],
+    ["603", "Docente A", "LUN 19-21 · JUE 19-21",    9],
+    ["604", "Docente C", "SAB 8-12",                21]]},
+  {codigo:"D102", creditos:"4", nombre:"INVESTIGACIÓN DE OPERACIONES", secciones:[
+    ["611", "Docente D", "LUN 10-12 · MIE 10-12",    6],
+    ["612", "Docente E", "MAR 8-10 · JUE 8-10",      0],
+    ["613", "Docente D", "MAR 18-20 · VIE 18-20",   17]]},
+  {codigo:"D103", creditos:"3", nombre:"CONTROL DE CALIDAD", secciones:[
+    ["621", "Docente F", "LUN 14-17",               11],
+    ["622", "Docente F", "MIE 16-19",                2],
+    ["623", "Docente G", "JUE 9-12",               "X"],
+    ["624", "Docente G", "SAB 10-13",               25]]},
+  {codigo:"D104", creditos:"4", nombre:"ESTUDIO DEL TRABAJO", secciones:[
+    ["631", "Docente H", "MAR 10-12 · JUE 10-12",    8],
+    ["632", "Docente H", "LUN 16-18 · MIE 14-16",    5],
+    ["633", "Docente I", "MIE 19-21 · VIE 19-21",   19]]},
+  {codigo:"D105", creditos:"3", nombre:"LOGÍSTICA Y CADENA DE SUMINISTRO", secciones:[
+    ["641", "Docente J", "MAR 16-19",                4],
+    ["642", "Docente J", "VIE 8-11",                13],
+    ["643", "Docente K", "LUN 18-21",             null]]},
+  {codigo:"D106", creditos:"3", nombre:"ESTADÍSTICA APLICADA", secciones:[
+    ["651", "Docente L", "LUN 12-14 · MIE 12-14",    7],
+    ["652", "Docente L", "MAR 12-13:30 · JUE 12-13:30", 15],
+    ["653", "Docente M", "VIE 10-12 · SAB 8-10",     1]]},
+  {codigo:"D107", creditos:"3", nombre:"SISTEMAS DE INFORMACIÓN", secciones:[
+    ["661", "Docente N", "MIE 8-10 · VIE 12-14",    10],
+    ["662", "Docente N", "JUE 15-18",              "X"],
+    ["663", "Docente O", "MAR 19-22",                6]]}
+];
+const CURSOS_POR_DEFECTO = 5;
+
+const RE_RANGO = /(\d{1,2})(?::(\d{2}))?\s*[-–]\s*(\d{1,2})(?::(\d{2}))?/g;
+
+/** Extrae todos los bloques horarios de un texto de un solo día. */
+function bloquesDeCelda(texto, dia){
+  const out = [];
+  RE_RANGO.lastIndex = 0;
+  let m;
+  while((m = RE_RANGO.exec(texto)) !== null){
+    const ini = (+m[1])*60 + (+(m[2]||0));
+    const fin = (+m[3])*60 + (+(m[4]||0));
+    if(fin > ini) out.push({dia, ini, fin});
+  }
+  return out;
+}
+
+/** "LUN 8-10 · MIE 8-10" → [{dia, ini, fin}] en minutos. */
+function bloquesDeHorario(horario){
+  return horario.split("·").flatMap(parte => {
+    const [dia, rango] = parte.trim().split(/\s+/);
+    return bloquesDeCelda(rango, DIAS.indexOf(dia));
+  });
+}
+
+/** Los cursos, con la misma forma que daba el parser de la herramienta original. */
+function cursosDeEjemplo(){
+  const vacantes = {};
+  const cursos = EJEMPLO.map((c, idx) => ({
+    idx, codigo:c.codigo, creditos:c.creditos, nivel:"", nombre:c.nombre,
+    secciones:c.secciones.map(([codigo, profesor, horario, vac]) => {
+      if(vac !== null) vacantes[c.codigo + "|" + codigo] = (vac === "X") ? -1 : vac;
+      return {cursoIdx:idx, codigo, profesor, bloques:bloquesDeHorario(horario)};
+    })
+  }));
+  return {cursos, vacantes};
+}
+
+/* ====================== 3. MODELO (máscaras de tiempo) ===================== */
+
+const RANGO = {base:7*60, fin:23*60, slots:32, palabras:1};
+
+/** Fija la ventana horaria a partir de los datos y construye las máscaras. */
+function prepararMascaras(cursos){
+  let min = 24*60, max = 0;
+  for(const c of cursos) for(const s of c.secciones) for(const b of s.bloques){
+    if(b.ini < min) min = b.ini;
+    if(b.fin > max) max = b.fin;
+  }
+  if(max === 0){ min = 7*60; max = 23*60; }
+  RANGO.base     = Math.floor(min/60)*60;
+  RANGO.fin      = Math.ceil(max/60)*60;
+  RANGO.slots    = Math.max(1,(RANGO.fin - RANGO.base)/30);
+  RANGO.palabras = Math.ceil(RANGO.slots/32);
+
+  const N = RANGO.palabras * 6;
+  for(const c of cursos) for(const s of c.secciones){
+    const mask = new Uint32Array(N);
+    for(const b of s.bloques){
+      const i0 = Math.floor((b.ini - RANGO.base)/30);
+      const i1 = Math.ceil ((b.fin - RANGO.base)/30);
+      for(let i=i0;i<i1;i++){
+        mask[b.dia*RANGO.palabras + (i>>5)] |= (1 << (i & 31));
+      }
+    }
+    s.mask = mask;
+    s.dias = [...new Set(s.bloques.map(b => b.dia))];
+  }
+}
+
+/**
+ * Anota `sec.vacantes` en cada sección a partir de los datos capturados.
+ * Convenio: número ≥ 0 = vacantes libres; -1 = la sección no controla vacantes
+ * (el sistema muestra "X"); `undefined` = no hay dato para esa sección.
+ */
+function aplicarVacantes(){
+  for(const c of S.cursos) for(const s of c.secciones){
+    const v = S.vacantes ? S.vacantes[c.codigo + "|" + s.codigo] : undefined;
+    s.vacantes = (typeof v === "number" && Number.isFinite(v)) ? v : undefined;
+  }
+}
+
+function choca(acc, mask){
+  for(let i=0;i<mask.length;i++) if((acc[i] & mask[i]) !== 0) return true;
+  return false;
+}
+function aplicar(acc, mask, quitar){
+  for(let i=0;i<mask.length;i++) acc[i] ^= mask[i];   // OR y su inverso: las
+}                                                    // secciones no se solapan.
+
+/* --- métricas por día, cacheadas por patrón de bits (hay pocos distintos) --- */
+const cacheDia = new Map();
+
+function metricasDia(acc, dia){
+  const P = RANGO.palabras, o = dia*P;
+  let clave = acc[o];
+  for(let w=1; w<P; w++) clave = clave + "|" + acc[o+w];
+  let m = cacheDia.get(clave);
+  if(m !== undefined) return m;
+
+  let primero = -1, ultimo = -1, ocupados = 0, huecoMax = 0, huecoTot = 0, corrida = 0;
+  for(let i=0;i<RANGO.slots;i++){
+    const bit = (acc[o + (i>>5)] >>> (i & 31)) & 1;
+    if(bit){
+      if(primero < 0) primero = i;
+      else if(corrida > 0){ huecoTot += corrida; if(corrida > huecoMax) huecoMax = corrida; }
+      corrida = 0; ultimo = i; ocupados++;
+    }else if(primero >= 0){
+      corrida++;
+    }
+  }
+  m = {tieneClase:primero >= 0, primero, ultimo, ocupados,
+       huecoMax:huecoMax/2, huecoTot:huecoTot/2};   // slots de 30 min → horas
+  cacheDia.set(clave, m);
+  return m;
+}
+
+/* ====================== 4. MOTOR ========================================== */
+
+/** ¿La sección respeta las restricciones que se pueden juzgar por sí solas? */
+function motivoDescarte(sec, cfg){
+  // Vacantes: solo descarta cuando hay un número conocido por debajo del mínimo.
+  // Sin dato (undefined) y sin control de vacantes (-1) siempre pasan.
+  if(cfg.vacantesMin > 0 && sec.vacantes !== undefined && sec.vacantes >= 0 &&
+     sec.vacantes < cfg.vacantesMin){
+    return "menos de " + cfg.vacantesMin + " vacantes";
+  }
+  for(const b of sec.bloques){
+    if(cfg.sinSabado && b.dia === 5) return "sábado";
+    // Las franjas ocupadas valen también en los días virtuales: son tiempo en el
+    // que no se puede tener clase, igual que un choque con otro curso.
+    for(const z of cfg.bloqueos){
+      if(z.dia === b.dia && b.ini < z.fin && z.ini < b.fin) return "franja ocupada " + textoBloqueo(z);
+    }
+    if(cfg.exentos[b.dia]) continue;            // día virtual: solo cuenta el choque
+    if(b.ini < cfg.horaMin*60) return "empieza antes de las " + cfg.horaMin + ":00";
+    if(b.fin > cfg.horaMax*60) return "termina después de las " + cfg.horaMax + ":00";
+  }
+  return null;
+}
+
+function combinaciones(arr, k){
+  const res = [], act = [];
+  (function rec(i){
+    if(act.length === k){ res.push([...act]); return; }
+    if(i >= arr.length) return;
+    if(arr.length - i < k - act.length) return;
+    act.push(arr[i]); rec(i+1); act.pop();
+    rec(i+1);
+  })(0);
+  return res;
+}
+
+/** Subconjuntos de `cursos` de tamaño k que contienen todos los obligatorios. */
+function subconjuntos(cursos, k, obligatorios){
+  const fijos = cursos.filter(c => obligatorios.includes(c.idx));
+  const libres = cursos.filter(c => !obligatorios.includes(c.idx));
+  if(fijos.length > k) return [];
+  return combinaciones(libres, k - fijos.length).map(resto => [...fijos, ...resto]);
+}
+
+/** Heap mínimo por puntaje: conserva los K mejores sin guardar todo. */
+class TopK{
+  constructor(k){ this.k = k; this.h = []; }
+  _peor(a,b){ return a.score !== b.score ? a.score < b.score : a.orden > b.orden; }
+  push(item){
+    const h = this.h;
+    if(h.length < this.k){ h.push(item); this._subir(h.length-1); return; }
+    if(this._peor(item, h[0])) return;
+    h[0] = item; this._bajar(0);
+  }
+  _subir(i){ const h=this.h; while(i>0){ const p=(i-1)>>1; if(this._peor(h[i],h[p])){ [h[i],h[p]]=[h[p],h[i]]; i=p; } else break; } }
+  _bajar(i){ const h=this.h; for(;;){ let m=i; const l=2*i+1,r=l+1;
+      if(l<h.length && this._peor(h[l],h[m])) m=l;
+      if(r<h.length && this._peor(h[r],h[m])) m=r;
+      if(m===i) return; [h[i],h[m]]=[h[m],h[i]]; i=m; } }
+  ordenados(){
+    return [...this.h].sort((a,b) => b.score - a.score || a.orden - b.orden);
+  }
+}
+
+function generar(cursos, cfg){
+  cacheDia.clear();
+  const t0 = performance.now();
+
+  // --- 4.1 pre-filtrado de secciones -------------------------------------
+  const diag = [];
+  const filtrados = cursos.map(c => {
+    const validas = [], motivos = {};
+    for(const s of c.secciones){
+      const m = motivoDescarte(s, cfg);
+      if(m) motivos[m] = (motivos[m]||0) + 1; else validas.push(s);
+    }
+    if(validas.length === 0) diag.push({curso:c, motivos});
+    return {...c, secciones:validas, total:c.secciones.length};
+  });
+
+  const disponibles = filtrados.filter(c => c.secciones.length > 0);
+  // Un curso obligatorio sin secciones válidas hace inviable toda la búsqueda.
+  const obligSinSecciones = filtrados.filter(c => cfg.obligatorios.includes(c.idx) && c.secciones.length === 0);
+  const res = {
+    cfg,                       // la configuración que produjo estos resultados: el
+                               // render debe usar esta y no la que tenga la UI ahora
+    filtrados, diag, total:0, nodos:0, ms:0, obligSinSecciones,
+    top:new TopK(cfg.topK),
+    sinCursos    : disponibles.length < cfg.nCursos,
+    exceso       : cfg.obligatorios.length > cfg.nCursos,
+    obligImposible: obligSinSecciones.length > 0
+  };
+  if(res.sinCursos || res.exceso || res.obligImposible){ res.ms = performance.now()-t0; return res; }
+
+  // --- 4.2 recorrido por subconjunto de cursos ---------------------------
+  const P   = RANGO.palabras;
+  const acc = new Uint32Array(P*6);
+  let orden = 0;
+
+  for(const sub of subconjuntos(disponibles, cfg.nCursos, cfg.obligatorios)){
+    // menos secciones primero: la poda por choque actúa antes.
+    const lista = [...sub].sort((a,b) => a.secciones.length - b.secciones.length);
+    const sel   = [];
+
+    (function rec(i){
+      if(i === lista.length){
+        res.nodos++;
+        const met = metricas(acc, sel, cfg);
+        if(met.huecoMax > cfg.huecoMax) return;          // restricción dura
+        res.total++;
+        res.top.push({secciones:[...sel], met, score:puntuar(met,cfg), orden:orden++});
+        return;
+      }
+      for(const s of lista[i].secciones){
+        res.nodos++;
+        if(choca(acc, s.mask)) continue;
+        aplicar(acc, s.mask); sel.push(s);
+        rec(i+1);
+        aplicar(acc, s.mask); sel.pop();
+      }
+    })(0);
+  }
+
+  res.ms = performance.now() - t0;
+  return res;
+}
+
+/* ====================== 5. MÉTRICAS Y PUNTAJE ============================= */
+
+function metricas(acc, sel, cfg){
+  let huecoMax = 0, huecoTot = 0, diasLibres = 0, sabado = false;
+  let primero = Infinity, ultimo = -Infinity, horasClase = 0, sumaMid = 0, nMid = 0;
+
+  for(let d=0; d<6; d++){
+    const m = metricasDia(acc, d);
+    if(!m.tieneClase){ diasLibres++; continue; }
+    if(d === 5) sabado = true;
+    horasClase += m.ocupados/2;
+    const ini = RANGO.base + m.primero*30, fin = RANGO.base + (m.ultimo+1)*30;
+    if(ini < primero) primero = ini;
+    if(fin > ultimo)  ultimo  = fin;
+    sumaMid += (ini + fin)/2/60; nMid++;
+    if(cfg.exentos[d]) continue;                 // día virtual: no cuenta huecos
+    if(m.huecoMax > huecoMax) huecoMax = m.huecoMax;
+    huecoTot += m.huecoTot;
+  }
+  let creditos = 0;
+  for(const s of sel) creditos += parseFloat(cfg.creditos[s.cursoIdx]) || 0;
+
+  return {huecoMax, huecoTot, diasLibres, sabado, horasClase, creditos,
+          primero:primero===Infinity?null:primero, ultimo:ultimo===-Infinity?null:ultimo,
+          medio:nMid?sumaMid/nMid:0};
+}
+
+function puntuar(m, cfg){
+  let s = 0;
+  s -= cfg.pesoHuecos * m.huecoTot;
+  s += cfg.pesoDias   * m.diasLibres * 2;
+  s -= cfg.pesoSabado * (m.sabado ? 3 : 0);
+  if(cfg.franja) s -= cfg.pesoFranja * Math.abs(m.medio - cfg.franja) * 0.7;
+  return Math.round(s * 100) / 100;
+}
+
+/* ====================== 6. ESTADO Y UI ==================================== */
+
+const S = {cursos:[], archivo:"", resultado:null, pagina:0, porPagina:5,
+           obligatorios:new Set(),   // códigos de curso
+           bloqueos:[],              // [{dia, ini, fin}] en minutos
+           vacantes:null,            // {"<codCurso>|<codSeccion>": n} o null si no hay datos
+           vacantesMeta:null};       // {errores, manual}
+const $ = id => document.getElementById(id);
+
+function hhmm(min){
+  const h = Math.floor(min/60), m = min % 60;
+  return h + (m ? ":" + String(m).padStart(2,"0") : "");
+}
+function colorCurso(i){ return "var(--c" + (i % 6) + ")"; }
+
+/* ---- construcción de controles ---- */
+(function initControles(){
+  const nc = $("nCursos");
+  for(let i=1;i<=12;i++) nc.add(new Option(i + (i===1?" curso":" cursos"), i));
+
+  for(let h=6; h<=22; h++) $("horaMin").add(new Option(h + ":00", h));
+  for(let h=8; h<=24; h++) $("horaMax").add(new Option(h + ":00", h));
+  $("horaMin").value = 7; $("horaMax").value = 23;
+
+  $("huecoMax").add(new Option("Sin límite", 99));
+  for(const v of [0,1,2,3,4,5,6]) $("huecoMax").add(new Option(v + (v===1?" hora":" horas"), v));
+  $("huecoMax").value = 99;
+
+  const cont = $("diasExentos");
+  DIAS.forEach((d,i) => {
+    const lab = document.createElement("label");
+    lab.innerHTML = '<input type="checkbox" data-dia="'+i+'"><span>'+d+'</span>';
+    const chk = lab.querySelector("input");
+    chk.checked = (i === 3);                       // jueves virtual por defecto
+    lab.classList.toggle("on", chk.checked);
+    chk.addEventListener("change", () => { lab.classList.toggle("on", chk.checked); guardarCfg(); });
+    cont.appendChild(lab);
+  });
+
+  for(const [rango,salida] of [["pesoHuecos","vPesoHuecos"],["pesoDias","vPesoDias"],
+                               ["pesoSabado","vPesoSabado"],["pesoFranja","vPesoFranja"]]){
+    $(rango).addEventListener("input", () => { $(salida).textContent = $(rango).value; guardarCfg(); });
+  }
+  $("franja").addEventListener("change", () => {
+    $("wrapPesoFranja").hidden = !$("franja").value;
+    guardarCfg();
+  });
+  for(const id of ["nCursos","horaMin","horaMax","huecoMax","sinSabado","vacantesMin"]){
+    $(id).addEventListener("change", guardarCfg);
+  }
+
+  // --- franjas ocupadas ---
+  $("bloqDia").add(new Option("Todos los días", -1));
+  DIAS_LARGO.forEach((d,i) => $("bloqDia").add(new Option(d, i)));
+  for(let m=6*60; m<=24*60; m+=30){
+    if(m < 24*60) $("bloqIni").add(new Option(hhmm(m), m));
+    if(m > 6*60)  $("bloqFin").add(new Option(hhmm(m), m));
+  }
+  $("bloqIni").value = 12*60; $("bloqFin").value = 14*60;
+  $("bloqIni").addEventListener("change", () => {          // fin siempre > inicio
+    if(+$("bloqFin").value <= +$("bloqIni").value) $("bloqFin").value = +$("bloqIni").value + 60;
+  });
+  $("bloqAdd").addEventListener("click", () => {
+    const ini = +$("bloqIni").value, fin = +$("bloqFin").value, d = +$("bloqDia").value;
+    if(fin <= ini) return;
+    for(const dia of (d === -1 ? [0,1,2,3,4,5] : [d])){
+      if(!S.bloqueos.some(z => z.dia === dia && z.ini === ini && z.fin === fin)){
+        S.bloqueos.push({dia, ini, fin});
+      }
+    }
+    S.bloqueos.sort((a,b) => a.dia - b.dia || a.ini - b.ini);
+    pintarBloqueos(); guardarCfg();
+  });
+})();
+
+function conteoVacantes(){
+  let con = 0, tot = 0;
+  for(const c of S.cursos) for(const s of c.secciones){ tot++; if(s.vacantes !== undefined) con++; }
+  return {con, tot};
+}
+
+function pintarEstadoVacantes(){
+  const el = $("vacEstado");
+  if(!S.vacantes){
+    el.className = "vac-estado";
+    el.innerHTML = "Sin datos de vacantes cargados. El filtro de <b>vacantes mínimas</b> " +
+                   "no hará nada hasta que los cargues.";
+    return;
+  }
+  const {con, tot} = conteoVacantes();
+  const m = S.vacantesMeta || {};
+  const fecha = m.generado ? new Date(m.generado) : null;
+  const horas = fecha ? (Date.now() - fecha.getTime())/36e5 : null;
+  const manual = m.manual ? new Date(m.manual) : null;
+  el.className = "vac-estado ok";
+  el.innerHTML =
+    "<b>" + con + " de " + tot + "</b> secciones con dato" +
+    (m.errores ? " · <b>" + m.errores + "</b> con error" : "") +
+    (fecha ? "<br>Capturado el " + fecha.toLocaleString("es-PE") : "") +
+    (manual ? "<br>Editado a mano el " + manual.toLocaleString("es-PE") : "") +
+    (horas !== null && horas > 12
+      ? '<br><span style="color:var(--alerta);font-weight:600">Datos de hace ' +
+        Math.round(horas) + " h: durante la matrícula las vacantes cambian rápido, " +
+        "conviene volver a capturarlas.</span>"
+      : "");
+}
+
+function avisoVacantes(html, esError){
+  const el = $("vacAviso");
+  el.className = esError ? "err" : "";
+  el.innerHTML = html || "";
+}
+
+/* ---- tabla de ingreso manual --------------------------------------------
+   Complementa al script: sirve para las secciones que te interesan sin tener
+   que capturarlas todas, o para corregir un dato suelto.                    */
+function valorAtexto(v){
+  if(v === undefined) return "";
+  return v < 0 ? "X" : String(v);
+}
+
+/** Lee lo escrito en una celda: número, "X" (sin control) o vacío (sin dato). */
+function textoAvalor(txt){
+  const t = txt.trim().toUpperCase();
+  if(t === "")  return {vacio:true};
+  if(t === "X") return {n:-1};
+  const n = parseInt(t, 10);
+  return (Number.isFinite(n) && n >= 0) ? {n} : {invalido:true};
+}
+
+function abrirTablaVacantes(){
+  if(!S.cursos.length){
+    avisoVacantes("Carga primero el archivo de horarios: la tabla lista sus secciones.", true);
+    return;
+  }
+  const modal = document.createElement("div");
+  modal.className = "modal";
+  modal.innerHTML =
+    '<div class="caja"><div class="cab"><h3>Vacantes por sección</h3>' +
+    "<p>Escribe el número que te muestra el botón <b>Vac</b> de cada sección. " +
+    "Deja en blanco lo que no sepas y escribe <b>X</b> si la sección no controla vacantes. " +
+    "Se guarda solo, y <b>Enter</b> salta a la siguiente.</p></div>" +
+    '<div class="lista"><table class="manual"><thead><tr>' +
+    "<th>Sección</th><th>Profesor</th><th>Horario</th>" +
+    '<th style="text-align:right">Vacantes</th></tr></thead><tbody></tbody></table></div>' +
+    '<div class="pie"><span class="cuenta"></span>' +
+    '<button class="chico" id="vacBorrarTodo">Borrar todas</button>' +
+    '<button class="primario" id="vacCerrar" style="width:auto;padding:7px 18px">Listo</button></div></div>';
+
+  const tbody  = modal.querySelector("tbody");
+  const cuenta = modal.querySelector(".cuenta");
+  const campos = [];
+
+  const refrescarCuenta = () => {
+    const {con, tot} = conteoVacantes();
+    cuenta.textContent = con + " de " + tot + " secciones con dato";
+  };
+
+  S.cursos.forEach((c,i) => {
+    const gr = document.createElement("tr");
+    gr.className = "grupo";
+    gr.innerHTML = '<td colspan="4"><span class="marca" style="background:' + colorCurso(i) +
+      '"></span>' + escapar(c.nombre) + ' <span class="cnt">· ' + c.codigo + " · " +
+      c.secciones.length + " secciones</span></td>";
+    tbody.appendChild(gr);
+
+    for(const s of c.secciones){
+      const tr = document.createElement("tr");
+      const hor = s.bloques.map(b => DIAS[b.dia] + " " + hhmm(b.ini) + "-" + hhmm(b.fin)).join(" · ");
+      tr.innerHTML = '<td class="sec">' + escapar(s.codigo) + "</td>" +
+        '<td class="det">' + escapar(s.profesor) + "</td>" +
+        '<td class="hor">' + escapar(hor) + "</td><td style='text-align:right'></td>";
+      const inp = document.createElement("input");
+      inp.type = "text"; inp.inputMode = "numeric"; inp.maxLength = 3;
+      inp.value = valorAtexto(s.vacantes);
+      inp.placeholder = "—";
+      inp.title = c.nombre + " · sección " + s.codigo;
+      inp.classList.toggle("lleno", inp.value !== "");
+      inp.addEventListener("input", () => {
+        const r = textoAvalor(inp.value);
+        if(r.invalido){ inp.value = inp.value.replace(/[^\dxX]/g, "").slice(0,3); return; }
+        if(!S.vacantes) S.vacantes = {};
+        const clave = c.codigo + "|" + s.codigo;
+        if(r.vacio) delete S.vacantes[clave]; else S.vacantes[clave] = r.n;
+        // Al curar los datos a mano, el recuento de fallos de la captura anterior
+        // deja de significar nada: manda la cobertura real ("N de M con dato").
+        S.vacantesMeta = Object.assign({}, S.vacantesMeta,
+                                       {errores:0, manual:new Date().toISOString()});
+        inp.classList.toggle("lleno", !r.vacio);
+        aplicarVacantes(); pintarEstadoVacantes(); refrescarCuenta();
+      });
+      inp.addEventListener("keydown", e => {
+        if(e.key !== "Enter") return;
+        e.preventDefault();
+        const k = campos.indexOf(inp);
+        (campos[k + (e.shiftKey ? -1 : 1)] || inp).focus();
+      });
+      tr.lastElementChild.appendChild(inp);
+      campos.push(inp);
+      tbody.appendChild(tr);
+    }
+  });
+
+  const cerrar = () => {
+    modal.remove();
+    document.removeEventListener("keydown", alEscape);
+    if(S.cursos.length) pintarListaCursos(S.resultado ? S.resultado.filtrados : []);
+  };
+  const alEscape = e => { if(e.key === "Escape") cerrar(); };
+  document.addEventListener("keydown", alEscape);
+  modal.addEventListener("mousedown", e => { if(e.target === modal) cerrar(); });
+  modal.querySelector("#vacCerrar").addEventListener("click", cerrar);
+  modal.querySelector("#vacBorrarTodo").addEventListener("click", () => {
+    S.vacantes = {}; S.vacantesMeta = null;
+    aplicarVacantes(); pintarEstadoVacantes();
+    for(const i of campos){ i.value = ""; i.classList.remove("lleno"); }
+    refrescarCuenta();
+  });
+
+  refrescarCuenta();
+  document.body.appendChild(modal);
+  campos[0]?.focus();
+}
+
+$("vacManual").addEventListener("click", abrirTablaVacantes);
+
+function pintarBloqueos(){
+  const ul = $("bloqLista");
+  ul.innerHTML = "";
+  S.bloqueos.forEach((z,i) => {
+    const li = document.createElement("li");
+    li.innerHTML = "<span>" + DIAS_LARGO[z.dia] + " <b>" + hhmm(z.ini) + "–" + hhmm(z.fin) +
+      '</b></span><button class="quitar" title="Quitar">×</button>';
+    li.querySelector("button").onclick = () => {
+      S.bloqueos.splice(i,1); pintarBloqueos(); guardarCfg();
+    };
+    ul.appendChild(li);
+  });
+  $("bloqVacio").hidden = S.bloqueos.length > 0;
+}
+
+function textoBloqueo(z){
+  return DIAS[z.dia] + " " + hhmm(z.ini) + "-" + hhmm(z.fin);
+}
+
+function leerCfg(){
+  const exentos = [false,false,false,false,false,false];
+  document.querySelectorAll("#diasExentos input").forEach(c => exentos[+c.dataset.dia] = c.checked);
+  return {
+    obligatorios: S.cursos.filter(c => S.obligatorios.has(c.codigo)).map(c => c.idx),
+    bloqueos : S.bloqueos.map(z => ({...z})),      // copia: editar la lista después
+                                                   // no debe alterar una corrida ya hecha
+
+    nCursos  : +$("nCursos").value,
+    horaMin  : +$("horaMin").value,
+    horaMax  : +$("horaMax").value,
+    huecoMax : +$("huecoMax").value,
+    sinSabado: $("sinSabado").checked,
+    vacantesMin: Math.max(0, +$("vacantesMin").value || 0),
+    exentos,
+    pesoHuecos: +$("pesoHuecos").value,
+    pesoDias  : +$("pesoDias").value,
+    pesoSabado: +$("pesoSabado").value,
+    pesoFranja: +$("pesoFranja").value,
+    franja    : $("franja").value ? +$("franja").value : null,
+    topK      : 300,
+    creditos  : S.cursos.map(c => c.creditos)
+  };
+}
+
+/** La demo no guarda nada en el navegador: cada visita parte de los valores de ejemplo. */
+function guardarCfg(){}
+
+/* ---- carga de los horarios de ejemplo ---- */
+function aplicarDatos(cursos, nombre){
+  prepararMascaras(cursos);
+  S.cursos = cursos; S.archivo = nombre; S.resultado = null;
+  aplicarVacantes();
+  pintarEstadoVacantes();
+
+  const nSec = cursos.reduce((a,c) => a + c.secciones.length, 0);
+  const nBlq = cursos.reduce((a,c) => a + c.secciones.reduce((b,s) => b + s.bloques.length, 0), 0);
+  $("infoArchivo").innerHTML = "<b>" + escapar(nombre) + "</b> · " + cursos.length +
+    " cursos · " + nSec + " secciones · " + nBlq + " bloques";
+
+  const nc = $("nCursos");
+  nc.innerHTML = "";
+  for(let i=1;i<=cursos.length;i++) nc.add(new Option(i + (i===1?" curso":" cursos"), i));
+  nc.value = Math.min(CURSOS_POR_DEFECTO, cursos.length);
+
+  $("btnGenerar").disabled = false;
+  pintarListaCursos([]);
+}
+
+function pintarListaCursos(filtrados){
+  const cont = $("listaCursos");
+  cont.innerHTML = "";
+  S.cursos.forEach((c,i) => {
+    const f   = filtrados.find(x => x.idx === c.idx);
+    const obl = S.obligatorios.has(c.codigo);
+    const div = document.createElement("div");
+    div.className = "curso-item" + (obl ? " oblig" : "");
+    const met = f
+      ? '<div class="met' + (f.secciones.length ? "" : " cero") + '">' +
+        f.secciones.length + " de " + c.secciones.length + " secciones válidas</div>"
+      : '<div class="met">' + c.secciones.length + " secciones · " + c.creditos + " créd.</div>";
+    div.innerHTML =
+      '<input type="checkbox" title="Curso obligatorio"' + (obl ? " checked" : "") + ">" +
+      '<span class="punto" style="background:' + colorCurso(i) + '"></span>' +
+      '<div><div class="nom">' + escapar(c.nombre) +
+      (obl ? ' <span class="oblig-et">OBLIG.</span>' : "") + "</div>" + met + "</div>";
+    div.querySelector("input").addEventListener("change", e => {
+      if(e.target.checked) S.obligatorios.add(c.codigo); else S.obligatorios.delete(c.codigo);
+      guardarCfg();
+      pintarListaCursos(filtrados);
+    });
+    cont.appendChild(div);
+  });
+  $("cardCursos").hidden = false;
+}
+
+/* ---- generación ---- */
+$("btnGenerar").addEventListener("click", () => correrMotor(true));
+
+/** Genera y pinta. En el celular los resultados van arriba: `subir` lleva hasta ellos. */
+function correrMotor(subir){
+  const btn = $("btnGenerar");
+  btn.disabled = true; btn.textContent = "Calculando…";
+  $("salida").innerHTML = '<div class="vacio">Explorando combinaciones…</div>';
+  // setTimeout y no requestAnimationFrame: da tiempo a pintar el estado antes de
+  // bloquear el hilo, y además se dispara aunque la pestaña esté en segundo plano
+  // (rAF queda congelado ahí y dejaría el botón colgado en "Calculando…").
+  setTimeout(() => {
+    try{
+      S.resultado = generar(S.cursos, leerCfg());
+      S.pagina = 0;
+      pintarListaCursos(S.resultado.filtrados);
+      pintarResultados();
+      if(subir && matchMedia("(max-width:980px)").matches){
+        $("salida").scrollIntoView({behavior:"smooth", block:"start"});
+      }
+    }catch(err){
+      $("salida").innerHTML = '<div class="aviso err"><h3>Error al generar</h3>' +
+        escapar(err.message) + "</div>";
+      throw err;
+    }finally{
+      btn.disabled = false; btn.textContent = "Generar horarios";
+    }
+  }, 50);
+}
+
+/* ====================== 7. RENDER ========================================= */
+
+function escapar(s){
+  return String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+}
+
+function pintarResultados(){
+  const r   = S.resultado;
+  const out = $("salida");
+  out.innerHTML = "";
+  const cfg = r.cfg;
+
+  if(r.total === 0){ out.appendChild(pintarDiagnostico(r, cfg)); return; }
+
+  const lista = r.top.ordenados();
+  const nPag  = Math.ceil(lista.length / S.porPagina);
+
+  const res = document.createElement("div");
+  res.className = "resumen";
+  res.innerHTML =
+    '<div><div class="num">' + r.total.toLocaleString("es-PE") + '</div><div class="et">horarios válidos</div></div>' +
+    '<div><div class="num">' + r.nodos.toLocaleString("es-PE") + '</div><div class="et">nodos explorados</div></div>' +
+    '<div><div class="num">' + Math.round(r.ms) + ' ms</div><div class="et">tiempo</div></div>' +
+    '<div><div class="num">' + lista.length + '</div><div class="et">mejores mostrados</div></div>';
+  const pag = document.createElement("div");
+  pag.className = "pag";
+  pag.innerHTML = '<button class="chico" id="ant">← Anteriores</button>' +
+    '<span style="color:var(--tenue)">Página ' + (S.pagina+1) + " de " + nPag + "</span>" +
+    '<button class="chico" id="sig">Siguientes →</button>';
+  res.appendChild(pag);
+  out.appendChild(res);
+
+  if(r.total > lista.length){
+    const nota = document.createElement("div");
+    nota.className = "aviso info";
+    nota.style.marginBottom = "14px";
+    nota.innerHTML = "Se evaluaron y puntuaron los <b>" + r.total.toLocaleString("es-PE") +
+      "</b> horarios válidos; se muestran los <b>" + lista.length +
+      "</b> de mayor puntaje según tus preferencias. Endurece las restricciones " +
+      "(rango horario, hueco máximo) para reducir el universo.";
+    out.appendChild(nota);
+  }
+
+  const ini = S.pagina * S.porPagina;
+  lista.slice(ini, ini + S.porPagina).forEach((v,k) => out.appendChild(pintarVariante(v, ini+k+1, cfg)));
+
+  $("ant").disabled = S.pagina === 0;
+  $("sig").disabled = S.pagina >= nPag - 1;
+  $("ant").onclick = () => { S.pagina--; pintarResultados(); window.scrollTo({top:0,behavior:"smooth"}); };
+  $("sig").onclick = () => { S.pagina++; pintarResultados(); window.scrollTo({top:0,behavior:"smooth"}); };
+}
+
+function pintarDiagnostico(r, cfg){
+  const div = document.createElement("div");
+  div.className = "aviso err";
+  let html = "<h3>Ningún horario cumple las restricciones</h3>";
+
+  if(r.exceso){
+    html += "Marcaste <b>" + cfg.obligatorios.length + " cursos obligatorios</b> pero pediste " +
+      "horarios de solo <b>" + cfg.nCursos + "</b>. Sube la cantidad de cursos o desmarca alguno.";
+  }
+  if(r.obligImposible){
+    html += "<p>Estos cursos son <b>obligatorios</b> pero se quedaron sin ninguna sección válida:</p><ul>";
+    for(const c of r.obligSinSecciones) html += "<li><b>" + escapar(c.nombre) + "</b></li>";
+    html += "</ul>";
+  }
+  if(r.sinCursos){
+    html += "Pides <b>" + cfg.nCursos + " cursos</b>, pero solo <b>" +
+      r.filtrados.filter(c => c.secciones.length > 0).length +
+      "</b> conservan alguna sección válida tras aplicar los filtros.";
+  }
+  if(r.diag.length){
+    html += "<p>Cursos que se quedaron <b>sin ninguna sección</b>:</p><ul>";
+    for(const d of r.diag){
+      const motivos = Object.entries(d.motivos).map(([m,n]) => n + " por " + m).join(", ");
+      html += "<li><b>" + escapar(d.curso.nombre) + "</b> — " + escapar(motivos) + "</li>";
+    }
+    html += "</ul>";
+  }
+  if(!r.sinCursos && !r.diag.length && !r.exceso && !r.obligImposible){
+    html += "Todas las combinaciones sin choque de horas fueron descartadas por el " +
+      "<b>hueco máximo de " + cfg.huecoMax + " h</b>. Aumenta ese límite o reduce la " +
+      "cantidad de cursos.";
+  }
+  html += "<p style='margin-bottom:0'>Sugerencias: ampliar el rango horario, subir el hueco " +
+    "máximo, permitir sábados, quitar alguna franja ocupada" +
+    (cfg.vacantesMin > 0 ? ", bajar el mínimo de vacantes" : "") + " o pedir menos cursos.</p>";
+  div.innerHTML = html;
+  return div;
+}
+
+function pintarVariante(v, rank, cfg){
+  const art = document.createElement("article");
+  art.className = "variante";
+
+  const m = v.met;
+  const chips = [
+    ["Puntaje", v.score.toFixed(1)],
+    ["Horas muertas", m.huecoTot + " h"],
+    ["Hueco máx.", m.huecoMax + " h"],
+    ["Días libres", m.diasLibres],
+    ["Horas de clase", m.horasClase + " h"],
+    ["Créditos", m.creditos],
+    ["Jornada", m.primero !== null ? hhmm(m.primero) + "–" + hhmm(m.ultimo) : "—"]
+  ].map(([k,val]) => '<span class="chip">' + k + " <b>" + val + "</b></span>").join("");
+
+  const cab = document.createElement("div");
+  cab.className = "cab";
+  cab.innerHTML = '<span class="rank">#' + rank + "</span>" + chips +
+    '<span class="acciones"><button class="chico" data-a="csv">CSV</button>' +
+    '<button class="chico" data-a="print">Imprimir</button></span>';
+  cab.querySelector('[data-a="csv"]').onclick   = () => exportarCSV(v, rank);
+  cab.querySelector('[data-a="print"]').onclick = () => imprimir(art);
+  art.appendChild(cab);
+
+  const cuerpo = document.createElement("div");
+  cuerpo.className = "cuerpo";
+  cuerpo.appendChild(pintarGrilla(v, cfg));
+  cuerpo.appendChild(pintarTabla(v, cfg));
+  art.appendChild(cuerpo);
+  return art;
+}
+
+function pintarGrilla(v, cfg){
+  const g = document.createElement("div");
+  g.className = "grid";
+  const ALTO = 15;                                  // px por slot de 30 min
+  g.style.gridTemplateRows = "auto repeat(" + RANGO.slots + "," + ALTO + "px)";
+
+  // cabecera de días
+  g.insertAdjacentHTML("beforeend", "<div></div>");
+  DIAS.forEach((d,i) => {
+    g.insertAdjacentHTML("beforeend",
+      '<div class="dh' + (cfg.exentos[i] ? " exento" : "") + '" style="grid-column:' + (i+2) + ';grid-row:1">' +
+      d + (cfg.exentos[i] ? "<small>virtual</small>" : "") + "</div>");
+  });
+  // fondo de columnas
+  DIAS.forEach((d,i) => {
+    g.insertAdjacentHTML("beforeend",
+      '<div class="colbg' + (cfg.exentos[i] ? " exento" : "") + (i===5 ? " ultima" : "") +
+      '" style="grid-column:' + (i+2) + ';grid-row:2/-1"></div>');
+  });
+  // líneas y etiquetas de hora (incluida la del borde inferior)
+  for(let i=0; i<=RANGO.slots; i++){
+    const min = RANGO.base + i*30;
+    if(min % 60 !== 0) continue;
+    const fila = (i < RANGO.slots) ? (i+2) : (RANGO.slots+1);
+    const borde = (i === RANGO.slots);
+    g.insertAdjacentHTML("beforeend",
+      (borde ? "" : '<div class="linea" style="grid-column:1/-1;grid-row:' + fila + '"></div>') +
+      '<div class="hora' + (borde ? " fin" : "") + '" style="grid-column:1;grid-row:' + fila + '">' +
+      hhmm(min) + "</div>");
+  }
+  // franjas ocupadas: se dibujan bajo las clases para ver que nada las invade
+  for(const z of cfg.bloqueos){
+    const ini = Math.max(z.ini, RANGO.base), fin = Math.min(z.fin, RANGO.fin);
+    if(fin <= ini) continue;                       // fuera de la ventana visible
+    const i0 = Math.floor((ini - RANGO.base)/30);
+    const n  = Math.ceil((fin - ini)/30);
+    const el = document.createElement("div");
+    el.className = "ocupado";
+    el.style.cssText = "grid-column:" + (z.dia+2) + ";grid-row:" + (i0+2) + "/span " + n;
+    el.title = "Ocupado: " + DIAS_LARGO[z.dia] + " " + hhmm(z.ini) + "–" + hhmm(z.fin);
+    el.textContent = n >= 2 ? "ocupado" : "";
+    g.appendChild(el);
+  }
+  // bloques
+  for(const s of v.secciones){
+    const curso = S.cursos[s.cursoIdx];
+    for(const b of s.bloques){
+      const i0 = Math.floor((b.ini - RANGO.base)/30);
+      const n  = Math.ceil((b.fin - b.ini)/30);
+      const el = document.createElement("div");
+      el.className = "bloque";
+      el.style.cssText = "grid-column:" + (b.dia+2) + ";grid-row:" + (i0+2) + "/span " + n +
+                         ";background:" + colorCurso(s.cursoIdx);
+      el.title = curso.nombre + " — sec. " + s.codigo + " — " + s.profesor;
+      el.innerHTML = '<span class="b1">' + escapar(abreviar(curso.nombre)) + "</span>" +
+                     '<span class="b2">' + s.codigo + " · " + hhmm(b.ini) + "-" + hhmm(b.fin) + "</span>";
+      g.appendChild(el);
+    }
+  }
+  return g;
+}
+
+function abreviar(nombre){
+  const menores = new Set(["DE","DEL","LA","LAS","EL","LOS","Y","EN","A"]);
+  const pal = nombre.split(/[\s/]+/).filter(p => p && !menores.has(p));
+  return pal.length <= 2 ? nombre : pal.map(p => p[0]).join("");
+}
+
+/** Celda de vacantes: número, "X" si la sección no controla vacantes, "—" si no hay dato. */
+function celdaVacantes(sec, cfg){
+  if(sec.vacantes === undefined)
+    return {clase:"vac sindato", txt:"—", tit:"Sin dato de vacantes: verifícalo antes de matricularte"};
+  if(sec.vacantes < 0)
+    return {clase:"vac libre", txt:"X", tit:"Esta sección no controla vacantes"};
+  const pocas = cfg.vacantesMin > 0 ? sec.vacantes < cfg.vacantesMin + 3 : sec.vacantes <= 3;
+  return {clase:"vac" + (pocas ? " pocas" : ""), txt:String(sec.vacantes),
+          tit:sec.vacantes + " vacantes al momento de la captura"};
+}
+
+function pintarTabla(v, cfg){
+  const cont = document.createElement("div");
+  const t = document.createElement("table");
+  t.className = "secs";
+  const hayVac = S.vacantes !== null;
+  let html = "<thead><tr><th>Curso</th><th>Sec.</th><th>Profesor titular</th><th>Horario</th>" +
+             (hayVac ? "<th style='text-align:right'>Vac.</th>" : "") + "</tr></thead><tbody>";
+  let sinDato = 0;
+  for(const s of [...v.secciones].sort((a,b) => a.cursoIdx - b.cursoIdx)){
+    const c = S.cursos[s.cursoIdx];
+    // Un <span> por bloque: en el celular van uno debajo del otro.
+    const h = s.bloques.map(b => "<span class='blq'>" + DIAS[b.dia] + " " + hhmm(b.ini) + "-" + hhmm(b.fin) + "</span>")
+                       .join("<span class='sep'> · </span>");
+    let cv = "";
+    if(hayVac){
+      const x = celdaVacantes(s, cfg);
+      if(s.vacantes === undefined) sinDato++;
+      cv = "<td class='" + x.clase + "' title='" + escapar(x.tit) + "'>" + x.txt + "</td>";
+    }
+    html += "<tr><td><span class='marca' style='background:" + colorCurso(s.cursoIdx) + "'></span>" +
+      escapar(c.nombre) + " <span class='prof'>(" + c.codigo + ")</span></td>" +
+      "<td class='cod'>" + escapar(s.codigo) + "</td>" +
+      "<td class='prof'>" + escapar(s.profesor) + "</td>" +
+      "<td class='hor'>" + h + "</td>" + cv + "</tr>";
+  }
+  t.innerHTML = html + "</tbody>";
+  const scroll = document.createElement("div");   // en el celular, la tabla se desliza
+  scroll.className = "tabla-scroll";              // sola y no la página entera
+  scroll.appendChild(t);
+  cont.appendChild(scroll);
+  if(sinDato){
+    const n = document.createElement("div");
+    n.className = "nota-vac";
+    n.innerHTML = "<span>⚠</span><span>" + sinDato + (sinDato === 1
+      ? " sección de este horario no tiene dato de vacantes (marcada con —): verifícala"
+      : " secciones de este horario no tienen dato de vacantes (marcadas con —): verifícalas") +
+      " con el botón <b>Vac</b> antes de matricularte.</span>";
+    cont.appendChild(n);
+  }
+  return cont;
+}
+
+/* ---- exportar / imprimir ---- */
+function exportarCSV(v, rank){
+  const filas = [["Curso","Codigo curso","Creditos","Seccion","Profesor","Dia","Inicio","Fin","Vacantes"]];
+  for(const s of [...v.secciones].sort((a,b) => a.cursoIdx - b.cursoIdx)){
+    const c = S.cursos[s.cursoIdx];
+    const vac = s.vacantes === undefined ? "sin dato" : (s.vacantes < 0 ? "sin control" : s.vacantes);
+    for(const b of s.bloques){
+      filas.push([c.nombre, c.codigo, c.creditos, s.codigo, s.profesor,
+                  DIAS_LARGO[b.dia], hhmm(b.ini), hhmm(b.fin), vac]);
+    }
+  }
+  const csv = "﻿" + filas.map(f => f.map(x => '"' + String(x).replace(/"/g,'""') + '"').join(";")).join("\r\n");
+  const url = URL.createObjectURL(new Blob([csv], {type:"text/csv;charset=utf-8"}));
+  const a = document.createElement("a");
+  a.href = url; a.download = "horario-" + rank + ".csv"; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function imprimir(art){
+  document.querySelectorAll(".variante.imprimir").forEach(e => e.classList.remove("imprimir"));
+  art.classList.add("imprimir");
+  document.body.classList.add("imprimiendo");
+  window.print();
+  setTimeout(() => document.body.classList.remove("imprimiendo"), 500);
+}
+
+/* ====================== 8. ARRANQUE Y AUTOVERIFICACIÓN ==================== */
+
+(function arrancar(){
+  const {cursos, vacantes} = cursosDeEjemplo();
+  S.vacantes = vacantes; S.vacantesMeta = {errores:0};
+  aplicarDatos(cursos, "Horarios de ejemplo");
+  correrMotor(false);
+})();
+
+/** Comprobación de correctitud: ningún horario mostrado puede tener solapamientos. */
+window.PLANIFICADOR = {
+  estado:S,
+  verificar(){
+    if(!S.resultado) return "Genera horarios primero.";
+    let violaciones = 0, revisados = 0;
+    for(const v of S.resultado.top.ordenados()){
+      revisados++;
+      const porDia = {};
+      for(const s of v.secciones) for(const b of s.bloques) (porDia[b.dia] ||= []).push(b);
+      for(const d in porDia){
+        const bs = porDia[d].sort((a,b) => a.ini - b.ini);
+        for(let i=1;i<bs.length;i++) if(bs[i].ini < bs[i-1].fin) violaciones++;
+      }
+    }
+    return {revisados, violaciones,
+            ok: violaciones === 0 ? "OK: sin solapamientos" : "FALLO"};
+  }
+};
+</script>
+</body>
+</html>
