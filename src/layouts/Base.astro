@@ -21,13 +21,14 @@ const tituloCompleto = titulo.includes(persona.nombreCorto) ? titulo : `${titulo
 const rutaCanonica = Astro.url.pathname.endsWith('/') ? Astro.url.pathname : `${Astro.url.pathname}/`;
 const canonica = new URL(rutaCanonica, Astro.site).href;
 
-// Navegación: solo lo que ya existe. Demos y Certificaciones se suman cuando
-// tengan página. En el celular Inicio se oculta: el nombre ya lleva ahí.
-// /dashboard se enlaza desde Proyectos, y la marca como sección actual.
+// Navegación: solo lo que ya existe. Certificaciones se suma cuando tenga
+// página. En el celular Inicio se oculta: el nombre ya lleva ahí.
+// /dashboard se enlaza desde Proyectos, y la marca como sección actual; la demo
+// de turnos, igual, desde su caso.
 const navegacion: { etiqueta: string; href: string; incluye?: string[] }[] = [
   { etiqueta: 'Inicio', href: '/' },
   { etiqueta: 'ERP', href: '/erp' },
-  { etiqueta: 'Casos', href: '/casos' },
+  { etiqueta: 'Casos', href: '/casos', incluye: ['/demos/turnos'] },
   { etiqueta: 'Proyectos', href: '/proyectos', incluye: ['/dashboard'] },
   { etiqueta: 'CV', href: '/cv' },
 ];

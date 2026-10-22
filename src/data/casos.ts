@@ -43,8 +43,10 @@ export interface Caso {
   diagramas: Diagrama[];
   resultado: string[];
   porMedir: string[];
-  /** Aviso de la demo interactiva mientras no esté publicada. */
+  /** La demo interactiva: un aviso mientras no esté publicada, o qué se prueba en ella. */
   demo?: string;
+  /** Dónde está la demo, cuando ya está publicada. */
+  demoUrl?: string;
   enlaces: Enlace[];
 }
 
@@ -114,7 +116,8 @@ export const casos: Caso[] = [
       'Minutos al día para armar la hoja de turnos, antes y después.',
       'Turnos corregidos a mano en la nómina por mes.',
     ],
-    demo: 'Próximamente: una demo con datos ficticios para armar una hoja de turnos y ver de qué día es el turno de noche.',
+    demo: 'Arma la hoja de un equipo inventado, parte una jornada con hora de cambio y compara de qué día es el turno de noche según Odoo y según la planta.',
+    demoUrl: '/demos/turnos',
     enlaces: [verErp],
   },
   {

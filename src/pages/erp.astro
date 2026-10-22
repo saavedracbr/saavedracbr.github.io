@@ -57,9 +57,10 @@ const descripcion = `El ERP Odoo de BBA Pack, una planta de POP y packaging: ${c
                   </li>
                 ))}
               </ol>
-              <a href={ruta(`/casos/${caso.slug}`)} class="mt-5 inline-block text-sm font-medium text-[var(--acento)]">
-                Ver el caso completo →
-              </a>
+              <p class="mt-5 flex flex-wrap gap-x-6 gap-y-2 text-sm font-medium text-[var(--acento)]">
+                <a href={ruta(`/casos/${caso.slug}`)}>Ver el caso completo →</a>
+                {caso.demoUrl && <a href={ruta(caso.demoUrl)}>Probar la demo →</a>}
+              </p>
             </li>
           ))
         }

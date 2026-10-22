@@ -1,0 +1,1243 @@
+---
+/**
+ * Demo de la hoja de turnos (caso `turnos-produccion`). Está hecha desde cero,
+ * sin código del ERP de BBA, y usa los datos inventados de
+ * `src/data/demos/turnos.ts`. Todo corre en el navegador: no guarda nada ni
+ * llama a ningún servidor.
+ */
+import Base from '../../layouts/Base.astro';
+import Contacto from '../../components/Contacto.astro';
+import { equipos, turnos } from '../../data/demos/turnos.ts';
+import { ruta } from '../../utils/rutas.ts';
+
+const descripcion =
+  'Demo con datos ficticios: arma la hoja de turnos de un equipo, parte una jornada con hora de cambio y mira de qué día es el turno de noche.';
+const enlace =
+  'inline-block rounded-[var(--radius-card)] border border-[var(--borde)] bg-[var(--superficie)] px-4 py-2 font-medium no-underline hover:border-[var(--acento)]';
+---
+
+<Base titulo="Demo: hoja de turnos" descripcion={descripcion} imagen="turnos-produccion">
+  <article class="dt mx-auto max-w-5xl px-4 pb-20 pt-10 sm:px-6 sm:pt-14">
+    <a
+      href={ruta('/casos/turnos-produccion')}
+      class="no-imprimir text-sm text-[var(--texto-suave)] no-underline hover:text-[var(--acento)]"
+      >← El caso: turnos de producción</a
+    >
+
+    <header class="no-imprimir mt-6">
+      <p class="font-mono text-eyebrow uppercase text-[var(--acento)]">Demo · datos ficticios</p>
+      <h1 class="mt-3 text-4xl font-semibold tracking-tight sm:text-5xl">Hoja de turnos sin Excel</h1>
+      <p class="mt-5 max-w-2xl text-lg text-[var(--texto-suave)]">
+        Arma la hoja de un equipo como en el módulo que hice para la planta: eliges el equipo, repartes las tareas, partes
+        una jornada con una hora de cambio y miras de qué día es el turno de noche.
+      </p>
+      <p
+        class="mt-6 max-w-2xl rounded-[var(--radius-card)] border border-dashed border-[var(--borde)] p-4 text-sm text-[var(--texto-suave)]"
+      >
+        Equipos, nombres, procesos y productos son inventados. Es una recreación hecha desde cero, no el ERP de la planta.
+        Lo que escribes no se guarda ni se envía: todo pasa en tu navegador.
+      </p>
+      <noscript>
+        <p class="mt-4 font-medium">La demo necesita JavaScript para funcionar.</p>
+      </noscript>
+    </header>
+
+    <section class="no-imprimir mt-12" aria-labelledby="t-jornada">
+      <h2 id="t-jornada" class="dt-h2">1. Equipo y jornada</h2>
+      <div class="mt-5 grid gap-4 sm:grid-cols-3 lg:grid-cols-5">
+        <label class="dt-control">
+          <span class="dt-etq">Fecha de la hoja</span>
+          <input id="f-fecha" type="date" class="dt-campo" />
+        </label>
+        <label class="dt-control">
+          <span class="dt-etq">Equipo</span>
+          <select id="f-equipo" class="dt-campo">
+            {equipos.map((e) => <option value={e.id}>{e.nombre}</option>)}
+          </select>
+        </label>
+        <label class="dt-control">
+          <span class="dt-etq">Turno</span>
+          <select id="f-turno" class="dt-campo">
+            {
+              Object.entries(turnos).map(([id, t]) => (
+                <option value={id}>
+                  {t.nombre} · {t.entrada}–{t.salida}
+                </option>
+              ))
+            }
+          </select>
+        </label>
+        <label class="dt-control">
+          <span class="dt-etq">Entrada</span>
+          <input id="f-entrada" type="time" step="300" class="dt-campo" />
+        </label>
+        <label class="dt-control">
+          <span class="dt-etq">Salida</span>
+          <input id="f-salida" type="time" step="300" class="dt-campo" />
+        </label>
+      </div>
+      <p id="f-resumen" class="mt-4 text-sm text-[var(--texto-suave)]"></p>
+    </section>
+
+    <section class="no-imprimir mt-14" aria-labelledby="t-asignaciones">
+      <div class="flex flex-wrap items-end justify-between gap-3">
+        <h2 id="t-asignaciones" class="dt-h2">2. Quién hace qué</h2>
+        <button id="b-recargar" type="button" class="dt-boton">Volver a cargar el equipo</button>
+      </div>
+      <p class="mt-2 max-w-3xl text-[var(--texto-suave)]">
+        Cada operario llega con su última asignación, y la flecha ↓ copia el producto a las filas de abajo. «Dividir» fija
+        una hora de cambio y parte la jornada en dos tramos. Si mueves una hora y los tramos se cruzan, la hoja avisa.
+      </p>
+      <ol id="filas" class="mt-6 grid gap-4"></ol>
+      <p id="totales" class="dt-totales mt-6" role="status"></p>
+    </section>
+
+    <section class="no-imprimir mt-14" aria-labelledby="t-dia">
+      <h2 id="t-dia" class="dt-h2">3. ¿De qué día es el turno?</h2>
+      <p class="mt-2 max-w-3xl text-[var(--texto-suave)]">
+        La hoja es del <strong id="d-hoja" class="font-semibold text-[var(--texto)]"></strong>. ¿En qué fecha llegan sus
+        horas a la nómina? Depende de la regla.
+      </p>
+      <fieldset class="dt-segmento mt-5">
+        <legend class="sr-only">Regla para fechar el turno</legend>
+        <label><input type="radio" name="regla" value="planta" checked /><span>Regla de la planta</span></label>
+        <label><input type="radio" name="regla" value="utc" /><span>Odoo estándar (UTC)</span></label>
+      </fieldset>
+      <div class="dt-linea-caja" aria-hidden="true">
+        <div id="d-linea" class="dt-linea"></div>
+        <div class="mt-1.5 flex justify-between text-xs text-[var(--texto-suave)]">
+          <span id="d-entrada"></span><span id="d-salida" class="text-right"></span>
+        </div>
+      </div>
+      <dl id="d-fechas" class="mt-5 grid gap-3 sm:grid-cols-2"></dl>
+      <p id="d-explica" class="mt-4 max-w-3xl" aria-live="polite"></p>
+      <p class="mt-3 max-w-3xl text-sm text-[var(--texto-suave)]">
+        En el ERP de la planta, la regla del día en que se entra solo se aplica a los turnos que vienen de la hoja. El
+        resto sigue como lo trae Odoo.
+      </p>
+    </section>
+
+    <section class="dt-seccion-hoja mt-14" aria-labelledby="t-hoja">
+      <div class="no-imprimir">
+        <h2 id="t-hoja" class="dt-h2">4. La hoja impresa</h2>
+        <p class="mt-2 max-w-3xl text-[var(--texto-suave)]">
+          Sale lista para la planta, agrupada por proceso o en una sola lista.
+        </p>
+        <div class="mt-5 flex flex-wrap items-center gap-3">
+          <fieldset class="dt-segmento">
+            <legend class="sr-only">Cómo agrupar la hoja</legend>
+            <label><input type="radio" name="agrupar" value="proceso" checked /><span>Por proceso</span></label>
+            <label><input type="radio" name="agrupar" value="lista" /><span>Una sola lista</span></label>
+          </fieldset>
+          <button id="b-ver" type="button" class="dt-boton" aria-expanded="false" aria-controls="hoja"
+            >Ver la hoja</button
+          >
+          <button id="b-imprimir" type="button" class="dt-boton dt-boton-principal">Imprimir o guardar en PDF</button>
+        </div>
+      </div>
+      <div id="hoja" class="dt-hoja mt-6"></div>
+    </section>
+
+    <nav class="no-imprimir mt-14 flex flex-wrap gap-3" aria-label="Seguir leyendo">
+      <a href={ruta('/casos/turnos-produccion')} class={enlace}>El caso completo</a>
+      <a href={ruta('/erp')} class={enlace}>El ERP, proceso por proceso</a>
+    </nav>
+
+    <div class="no-imprimir">
+      <Contacto />
+    </div>
+  </article>
+</Base>
+
+<script>
+  import {
+    equipos,
+    procesos,
+    productos,
+    turnos,
+    type Asignacion,
+    type TurnoId,
+  } from '../../data/demos/turnos.ts';
+
+  // Las horas se cuentan en minutos desde la entrada: así el turno de noche,
+  // de 22:00 a 06:00, es una sola jornada y no se corta a medianoche.
+  const DIA = 24 * 60;
+  /** Lima está en UTC−5: a las 19:00 de Lima ya es medianoche en UTC. */
+  const DESFASE_UTC = 5 * 60;
+  /** El equipo de noche: es el que muestra la diferencia entre las dos reglas. */
+  const EQUIPO_INICIAL = 'c';
+
+  type Regla = 'planta' | 'utc';
+  interface Tramo extends Asignacion {
+    desde: string;
+    hasta: string;
+  }
+  interface Fila {
+    nombre: string;
+    observacion: string;
+    tramos: Tramo[];
+  }
+  interface Aviso {
+    tipo: 'error' | 'hueco';
+    texto: string;
+  }
+
+  const estado = {
+    fecha: '',
+    equipo: EQUIPO_INICIAL,
+    turno: 'noche' as TurnoId,
+    entrada: '22:00',
+    salida: '06:00',
+    regla: 'planta' as Regla,
+    agrupar: 'proceso' as 'proceso' | 'lista',
+    filas: [] as Fila[],
+  };
+
+  // --- Horas y fechas ---
+
+  const dos = (n: number) => String(n).padStart(2, '0');
+  const aMinutos = (hora: string) => {
+    const [h, m] = hora.split(':').map(Number);
+    return h * 60 + m;
+  };
+  const aHora = (minutos: number) => {
+    const m = ((minutos % DIA) + DIA) % DIA;
+    return `${dos(Math.floor(m / 60))}:${dos(m % 60)}`;
+  };
+  const duracion = () => (aMinutos(estado.salida) - aMinutos(estado.entrada) + DIA) % DIA || DIA;
+  /** Minutos desde la entrada hasta esa hora. */
+  const inicio = (hora: string) => (aMinutos(hora) - aMinutos(estado.entrada) + DIA) % DIA;
+  /** Igual, pero una hora de fin igual a la entrada cuenta como el final del día. */
+  const fin = (hora: string) => inicio(hora) || DIA;
+  const horaDe = (desdeEntrada: number) => aHora(aMinutos(estado.entrada) + desdeEntrada);
+  const mitad = () => horaDe(Math.round(duracion() / 120) * 60);
+  const horas = (minutos: number) => {
+    const h = Math.floor(minutos / 60);
+    const m = minutos % 60;
+    if (!h) return m ? `${m} min` : '0 h';
+    return m ? `${h} h ${m} min` : `${h} h`;
+  };
+
+  const DIAS = ['dom.', 'lun.', 'mar.', 'mié.', 'jue.', 'vie.', 'sáb.'];
+  const MESES = ['ene.', 'feb.', 'mar.', 'abr.', 'may.', 'jun.', 'jul.', 'ago.', 'sep.', 'oct.', 'nov.', 'dic.'];
+  function hoy() {
+    const d = new Date();
+    return `${d.getFullYear()}-${dos(d.getMonth() + 1)}-${dos(d.getDate())}`;
+  }
+  /** La fecha de la hoja más `dias`, como "jue. 22 oct.". */
+  function fecha(dias: number, conAnio = false) {
+    const [a, m, d] = estado.fecha.split('-').map(Number);
+    const f = new Date(Date.UTC(a, m - 1, d + dias));
+    const texto = `${DIAS[f.getUTCDay()]} ${f.getUTCDate()} ${MESES[f.getUTCMonth()]}`;
+    return conAnio ? `${texto} ${f.getUTCFullYear()}` : texto;
+  }
+
+  /**
+   * Reparte un intervalo [a, b), en minutos desde las 00:00 del día de la hoja,
+   * entre fechas: 0 es el día de la hoja y 1 el siguiente. Con la regla de la
+   * planta, todo es del día en que se entra; con UTC, el día cambia a las 19:00.
+   */
+  function repartir(a: number, b: number, regla: Regla) {
+    const reparto = new Map<number, number>();
+    if (b <= a) return reparto;
+    if (regla === 'planta') return reparto.set(0, b - a);
+    for (let x = a; x < b; ) {
+      const dia = Math.floor((x + DESFASE_UTC) / DIA);
+      const corte = Math.min(b, (dia + 1) * DIA - DESFASE_UTC);
+      reparto.set(dia, (reparto.get(dia) ?? 0) + corte - x);
+      x = corte;
+    }
+    return reparto;
+  }
+
+  // --- Reglas de la hoja ---
+
+  const estacionesDe = (proceso: string) => procesos.find((p) => p.nombre === proceso)?.estaciones ?? [];
+  const equipoActual = () => equipos.find((e) => e.id === estado.equipo) ?? equipos[0];
+
+  /** Avisos de un operario y sus tramos válidos, en minutos desde la entrada. */
+  function revisar(fila: Fila) {
+    const dur = duracion();
+    const avisos: Aviso[] = [];
+    const validos: [number, number][] = [];
+    const partida = fila.tramos.length > 1;
+    fila.tramos.forEach((t, i) => {
+      const quien = partida ? `El tramo ${i + 1}` : 'La asignación';
+      const d = inicio(t.desde);
+      const h = fin(t.hasta);
+      if (d >= dur) avisos.push({ tipo: 'error', texto: `${quien} empieza fuera de la jornada (${estado.entrada}–${estado.salida}).` });
+      else if (h <= d) avisos.push({ tipo: 'error', texto: `${quien} termina antes de empezar.` });
+      else if (h > dur) avisos.push({ tipo: 'error', texto: `${quien} termina después de la salida (${estado.salida}).` });
+      else validos.push([d, h]);
+    });
+    if (validos.length === 2) {
+      const [[d1, h1], [d2, h2]] = validos;
+      const desde = Math.max(d1, d2);
+      const hasta = Math.min(h1, h2);
+      if (hasta > desde) {
+        avisos.push({
+          tipo: 'error',
+          texto: `Solape: los dos tramos se cruzan ${horas(hasta - desde)}, de ${horaDe(desde)} a ${horaDe(hasta)}. Nadie puede estar en dos tareas a la vez.`,
+        });
+      }
+    }
+    if (validos.length === fila.tramos.length) {
+      let cubierto = 0;
+      for (const [d, h] of [...validos].sort((x, y) => x[0] - y[0])) {
+        if (d > cubierto) avisos.push({ tipo: 'hueco', texto: `Sin tarea de ${horaDe(cubierto)} a ${horaDe(d)} (${horas(d - cubierto)}).` });
+        cubierto = Math.max(cubierto, h);
+      }
+      if (cubierto < dur) avisos.push({ tipo: 'hueco', texto: `Sin tarea de ${horaDe(cubierto)} a ${estado.salida} (${horas(dur - cubierto)}).` });
+    }
+    const minutos = validos.reduce((total, [d, h]) => total + h - d, 0);
+    return { avisos, validos, minutos };
+  }
+
+  /** Si cambia la jornada, los tramos la siguen; la hora de cambio se queda si aún cae dentro. */
+  function ajustarTramos() {
+    const dur = duracion();
+    const dentro = (hora: string) => inicio(hora) > 0 && inicio(hora) < dur;
+    for (const { tramos } of estado.filas) {
+      const [t1, t2] = tramos;
+      t1.desde = estado.entrada;
+      if (!t2) {
+        t1.hasta = estado.salida;
+        continue;
+      }
+      t2.hasta = estado.salida;
+      if (!dentro(t1.hasta) || !dentro(t2.desde)) t1.hasta = t2.desde = mitad();
+    }
+  }
+
+  // --- Dibujo ---
+
+  const $ = <T extends HTMLElement = HTMLElement>(selector: string) => document.querySelector<T>(selector)!;
+  function crear<K extends keyof HTMLElementTagNameMap>(etiqueta: K, clase = '', texto = '') {
+    const nodo = document.createElement(etiqueta);
+    if (clase) nodo.className = clase;
+    if (texto) nodo.textContent = texto;
+    return nodo;
+  }
+  function opciones(select: HTMLSelectElement, valores: string[], actual: string) {
+    select.replaceChildren(...valores.map((v) => new Option(v, v, false, v === actual)));
+  }
+  function control(etiqueta: string, campo: HTMLElement) {
+    const label = crear('label', 'dt-control');
+    label.append(crear('span', 'dt-etq', etiqueta), campo);
+    return label;
+  }
+  function campoHora(valor: string, campo: 'desde' | 'hasta') {
+    const input = crear('input', 'dt-campo');
+    input.type = 'time';
+    input.step = '300';
+    input.value = valor;
+    input.dataset.campo = campo;
+    return input;
+  }
+  function lista(campo: string, valores: string[], actual: string) {
+    const select = crear('select', 'dt-campo');
+    select.dataset.campo = campo;
+    opciones(select, valores, actual);
+    return select;
+  }
+
+  const filas = $<HTMLOListElement>('#filas');
+
+  function dibujarFilas() {
+    filas.replaceChildren(
+      ...estado.filas.map((fila, i) => {
+        const partida = fila.tramos.length > 1;
+        const li = crear('li', 'dt-fila');
+        li.dataset.fila = String(i);
+
+        const boton = crear('button', 'dt-boton', partida ? 'Quitar el cambio' : 'Dividir con hora de cambio');
+        boton.type = 'button';
+        boton.dataset.accion = partida ? 'unir' : 'dividir';
+        const cabecera = crear('div', 'dt-fila-cab');
+        cabecera.append(crear('p', 'dt-nombre', fila.nombre), crear('p', 'dt-horas'), boton);
+        li.append(cabecera);
+
+        fila.tramos.forEach((t, j) => {
+          const tramo = crear('fieldset', 'dt-tramo');
+          tramo.dataset.tramo = String(j);
+          tramo.append(crear('legend', partida ? 'dt-leyenda' : 'sr-only', partida ? '' : `Asignación de ${fila.nombre}`));
+
+          const campos = crear('div', 'dt-campos');
+          if (partida) {
+            campos.append(control('Desde', campoHora(t.desde, 'desde')), control('Hasta', campoHora(t.hasta, 'hasta')));
+          } else {
+            const horario = crear('div', 'dt-control dt-horario');
+            horario.append(crear('span', 'dt-etq', 'Horario'), crear('p', 'dt-fijo'));
+            campos.append(horario);
+          }
+          const copiar = crear('button', 'dt-boton dt-copiar', '↓');
+          copiar.type = 'button';
+          copiar.dataset.accion = 'copiar';
+          copiar.title = 'Copiar este producto a las filas de abajo';
+          copiar.setAttribute('aria-label', copiar.title);
+          const producto = crear('div', 'dt-con-boton');
+          producto.append(control('Producto', lista('producto', productos, t.producto)), copiar);
+          const cantidad = crear('input', 'dt-campo');
+          cantidad.type = 'number';
+          cantidad.min = '0';
+          cantidad.step = '1';
+          cantidad.inputMode = 'numeric';
+          cantidad.value = String(t.cantidad);
+          cantidad.dataset.campo = 'cantidad';
+          campos.append(
+            control(
+              'Proceso',
+              lista(
+                'proceso',
+                procesos.map((p) => p.nombre),
+                t.proceso,
+              ),
+            ),
+            control('Estación', lista('estacion', estacionesDe(t.proceso), t.estacion)),
+            producto,
+            control('Cantidad', cantidad),
+          );
+          tramo.append(campos);
+          li.append(tramo);
+        });
+
+        const observacion = crear('input', 'dt-campo');
+        observacion.type = 'text';
+        observacion.maxLength = 80;
+        observacion.placeholder = 'Opcional';
+        observacion.value = fila.observacion;
+        observacion.dataset.campo = 'observacion';
+        const etiqueta = control('Observación', observacion);
+        etiqueta.classList.add('dt-obs');
+        li.append(etiqueta, crear('ul', 'dt-avisos'));
+        return li;
+      }),
+    );
+    actualizar();
+  }
+
+  /** Lo que se recalcula con cada cambio: horas, avisos, fechas y la hoja impresa. */
+  function actualizar() {
+    const base = aMinutos(estado.entrada);
+    const porDia = new Map<number, number>();
+    let minutos = 0;
+    let errores = 0;
+    let huecos = 0;
+    estado.filas.forEach((fila, i) => {
+      const li = filas.children[i] as HTMLElement;
+      const { avisos, validos, minutos: suyos } = revisar(fila);
+      minutos += suyos;
+      errores += avisos.filter((a) => a.tipo === 'error').length;
+      huecos += avisos.filter((a) => a.tipo === 'hueco').length;
+      for (const [d, h] of validos) {
+        for (const [dia, m] of repartir(base + d, base + h, estado.regla)) porDia.set(dia, (porDia.get(dia) ?? 0) + m);
+      }
+      li.querySelector('.dt-horas')!.replaceChildren(
+        ...(fila.tramos.length > 1 ? [] : [crear('span', 'dt-rango', `${estado.entrada} → ${estado.salida} · `)]),
+        horas(suyos),
+      );
+      li.querySelectorAll('.dt-fijo').forEach((p) => (p.textContent = `${estado.entrada} → ${estado.salida}`));
+      li.querySelectorAll('.dt-leyenda').forEach((leyenda, j) => {
+        const t = fila.tramos[j];
+        const largo = fin(t.hasta) - inicio(t.desde);
+        leyenda.textContent = `Tramo ${j + 1} · ${t.desde} → ${t.hasta}${largo > 0 ? ` · ${horas(largo)}` : ''}`;
+      });
+      li.querySelector('.dt-avisos')!.replaceChildren(...avisos.map((a) => crear('li', `dt-aviso dt-aviso-${a.tipo}`, a.texto)));
+      li.classList.toggle('dt-fila-error', avisos.some((a) => a.tipo === 'error'));
+    });
+
+    const partes = [
+      errores && `${errores} ${errores === 1 ? 'aviso' : 'avisos'}`,
+      huecos && `${huecos} ${huecos === 1 ? 'hueco' : 'huecos'} sin tarea`,
+    ].filter(Boolean);
+    $('#totales').textContent =
+      `${estado.filas.length} operarios · ${horas(minutos)} asignadas · ${partes.length ? partes.join(' · ') : 'sin avisos'}`;
+
+    dibujarDia(porDia, minutos);
+    dibujarHoja(minutos, errores);
+  }
+
+  function dibujarDia(porDia: Map<number, number>, minutos: number) {
+    const base = aMinutos(estado.entrada);
+    const dur = duracion();
+    $('#d-hoja').textContent = fecha(0, true);
+
+    const linea = $('#d-linea');
+    const segmentos = [...repartir(base, base + dur, estado.regla)].map(([dia, m]) => {
+      const segmento = crear('div', `dt-seg dt-seg-${Math.min(dia, 1)}`, `${fecha(dia)} · ${horas(m)}`);
+      segmento.style.flexGrow = String(m);
+      return segmento;
+    });
+    const marcas: HTMLElement[] = [];
+    if (base + dur > DIA) {
+      const marca = crear('span', 'dt-marca', '00:00');
+      marca.style.left = `${((DIA - base) / dur) * 100}%`;
+      marcas.push(marca);
+    }
+    linea.replaceChildren(...segmentos, ...marcas);
+    const borde = (hora: string, dia: number) => [crear('span', 'dt-borde-hora', hora), crear('span', 'dt-borde-dia', fecha(dia))];
+    $('#d-entrada').replaceChildren(...borde(estado.entrada, 0));
+    $('#d-salida').replaceChildren(...borde(estado.salida, Math.floor((base + dur - 1) / DIA)));
+
+    const dias = [...new Set([0, 1, ...porDia.keys()])].sort((a, b) => a - b);
+    $('#d-fechas').replaceChildren(
+      ...dias.map((dia) => {
+        const m = porDia.get(dia) ?? 0;
+        const caja = crear('div', `dt-dia${m ? '' : ' dt-dia-vacio'}`);
+        caja.append(crear('dt', '', `${fecha(dia)}${dia === 0 ? ' (el de la hoja)' : ''}`), crear('dd', '', horas(m)));
+        return caja;
+      }),
+    );
+
+    const primero = porDia.get(0) ?? 0;
+    const resto = minutos - primero;
+    const utc = 'Odoo guarda las horas en UTC, y Lima está en UTC−5: desde las 19:00 ya es el día siguiente.';
+    let explica: string;
+    if (estado.regla === 'planta') {
+      explica = `Regla de la planta: el turno es del día en que se entra. Las ${horas(minutos)} del equipo cuentan el ${fecha(0)}, el día de la hoja.`;
+    } else if (!resto) {
+      explica = `${utc} Este turno termina antes de las 19:00, así que aquí las dos reglas coinciden.`;
+    } else if (!primero) {
+      explica = `${utc} Las ${horas(minutos)} del equipo pasan al ${fecha(1)}, y en la nómina la hoja del ${fecha(0)} queda vacía.`;
+    } else {
+      explica = `${utc} El mismo turno se parte en dos días: el ${fecha(0)} se queda con ${horas(primero)} y el ${fecha(1)}, con ${horas(resto)}.`;
+    }
+    $('#d-explica').textContent = explica;
+  }
+
+  /** Porcentaje del ancho de cada columna en la hoja agrupada por proceso. */
+  const ANCHOS: Record<string, number> = {
+    Operario: 15,
+    Horario: 15,
+    Proceso: 13.6,
+    Estación: 20,
+    Producto: 21,
+    Cantidad: 10,
+    Observación: 19,
+  };
+
+  function dibujarHoja(minutos: number, errores: number) {
+    const equipo = equipoActual();
+    const cabecera = crear('header');
+    cabecera.append(
+      crear('p', 'dt-hoja-marca', 'Demo con datos ficticios · saavedracbr.com'),
+      crear('h2', 'dt-hoja-titulo', `Hoja de turnos · ${equipo.nombre}`),
+      crear(
+        'p',
+        '',
+        `${fecha(0, true)} · Turno ${turnos[estado.turno].nombre.toLowerCase()}, ${estado.entrada}–${estado.salida} · Supervisor: ${equipo.supervisor}`,
+      ),
+    );
+
+    const lineas = estado.filas.flatMap((f) => f.tramos.map((t, j) => ({ f, t, j })));
+    const porProceso = estado.agrupar === 'proceso';
+    const bloques = porProceso
+      ? procesos
+          .map((p) => ({ titulo: p.nombre, lineas: lineas.filter((l) => l.t.proceso === p.nombre) }))
+          .filter((b) => b.lineas.length)
+      : [{ titulo: '', lineas }];
+
+    const tablas = bloques.map(({ titulo, lineas }) => {
+      const bloque = crear('section', 'dt-hoja-bloque');
+      if (titulo) bloque.append(crear('h3', '', titulo));
+      const columnas = ['Operario', 'Horario', ...(porProceso ? [] : ['Proceso']), 'Estación', 'Producto', 'Cantidad', 'Observación'];
+      const tabla = crear('table');
+      const cabeza = crear('tr');
+      cabeza.append(
+        ...columnas.map((c) => {
+          const th = crear('th', c === 'Cantidad' ? 'num' : '', c);
+          // Anchos fijos: las tablas de cada proceso quedan con las mismas columnas.
+          th.style.width = `${ANCHOS[c] * (porProceso ? 1 : 0.88)}%`;
+          return th;
+        }),
+      );
+      tabla.append(crear('thead'), crear('tbody'));
+      tabla.tHead!.append(cabeza);
+      for (const { f, t, j } of lineas) {
+        const celdas = [
+          f.nombre,
+          `${t.desde}–${t.hasta}`,
+          ...(porProceso ? [] : [t.proceso]),
+          t.estacion,
+          t.producto,
+          t.cantidad.toLocaleString('es-PE'),
+          j === 0 ? f.observacion : '',
+        ];
+        const tr = crear('tr');
+        tr.append(...celdas.map((c, k) => crear('td', columnas[k] === 'Cantidad' ? 'num' : '', c)));
+        tabla.tBodies[0].append(tr);
+      }
+      bloque.append(tabla);
+      return bloque;
+    });
+
+    const pie = crear('footer', 'dt-hoja-pie');
+    pie.append(
+      crear('p', '', `${estado.filas.length} operarios · ${horas(minutos)} asignadas`),
+      crear('p', 'dt-hoja-firma', 'Firma del supervisor'),
+    );
+    const extra = errores
+      ? [crear('p', 'dt-hoja-aviso', `Ojo: la hoja tiene ${errores} ${errores === 1 ? 'aviso' : 'avisos'} sin resolver.`)]
+      : [];
+    $('#hoja').replaceChildren(cabecera, ...tablas, ...extra, pie);
+  }
+
+  // --- Eventos ---
+
+  const fFecha = $<HTMLInputElement>('#f-fecha');
+  const fEquipo = $<HTMLSelectElement>('#f-equipo');
+  const fTurno = $<HTMLSelectElement>('#f-turno');
+  const fEntrada = $<HTMLInputElement>('#f-entrada');
+  const fSalida = $<HTMLInputElement>('#f-salida');
+
+  function resumen() {
+    const equipo = equipoActual();
+    const cruza = aMinutos(estado.salida) <= aMinutos(estado.entrada);
+    $('#f-resumen').textContent =
+      `Supervisor: ${equipo.supervisor} · ${equipo.miembros.length} operarios · turno habitual: ${turnos[equipo.turno].nombre.toLowerCase()}.` +
+      (cruza ? ' La jornada pasa la medianoche sin cortarse: es un solo turno.' : '');
+  }
+
+  function jornada(entrada: string, salida: string) {
+    estado.entrada = fEntrada.value = entrada;
+    estado.salida = fSalida.value = salida;
+  }
+
+  function cargarEquipo(id: string) {
+    estado.equipo = id;
+    const equipo = equipoActual();
+    estado.turno = fTurno.value = equipo.turno;
+    jornada(turnos[equipo.turno].entrada, turnos[equipo.turno].salida);
+    estado.filas = equipo.miembros.map((m) => ({
+      nombre: m.nombre,
+      observacion: '',
+      tramos: m.cambio
+        ? [
+            { ...m.ultima, desde: estado.entrada, hasta: m.cambio.hora },
+            { ...m.cambio.luego, desde: m.cambio.hora, hasta: estado.salida },
+          ]
+        : [{ ...m.ultima, desde: estado.entrada, hasta: estado.salida }],
+    }));
+    resumen();
+    dibujarFilas();
+  }
+
+  fFecha.addEventListener('input', () => {
+    estado.fecha = fFecha.value || hoy();
+    actualizar();
+  });
+  fEquipo.addEventListener('input', () => cargarEquipo(fEquipo.value));
+  fTurno.addEventListener('input', () => {
+    estado.turno = fTurno.value as TurnoId;
+    jornada(turnos[estado.turno].entrada, turnos[estado.turno].salida);
+    ajustarTramos();
+    resumen();
+    dibujarFilas();
+  });
+  for (const input of [fEntrada, fSalida]) {
+    input.addEventListener('input', () => {
+      if (!fEntrada.value || !fSalida.value) return;
+      jornada(fEntrada.value, fSalida.value);
+      ajustarTramos();
+      resumen();
+      dibujarFilas();
+    });
+  }
+  $('#b-recargar').addEventListener('click', () => cargarEquipo(estado.equipo));
+
+  filas.addEventListener('input', (evento) => {
+    const campo = evento.target as HTMLInputElement | HTMLSelectElement;
+    const nombre = campo.dataset.campo;
+    if (!nombre) return;
+    const fila = estado.filas[Number(campo.closest<HTMLElement>('[data-fila]')!.dataset.fila)];
+    if (nombre === 'observacion') {
+      fila.observacion = campo.value;
+      return actualizar();
+    }
+    const nodo = campo.closest<HTMLElement>('[data-tramo]')!;
+    const t = fila.tramos[Number(nodo.dataset.tramo)];
+    if (nombre === 'desde' || nombre === 'hasta') {
+      if (!campo.value) return;
+      if (nombre === 'desde') t.desde = campo.value;
+      else t.hasta = campo.value;
+    } else if (nombre === 'proceso') {
+      t.proceso = campo.value;
+      t.estacion = estacionesDe(t.proceso)[0];
+      opciones(nodo.querySelector<HTMLSelectElement>('[data-campo="estacion"]')!, estacionesDe(t.proceso), t.estacion);
+    } else if (nombre === 'estacion') {
+      t.estacion = campo.value;
+    } else if (nombre === 'producto') {
+      t.producto = campo.value;
+    } else if (nombre === 'cantidad') {
+      t.cantidad = Math.max(0, Math.round(Number(campo.value) || 0));
+    }
+    actualizar();
+  });
+
+  filas.addEventListener('click', (evento) => {
+    const boton = (evento.target as HTMLElement).closest<HTMLButtonElement>('[data-accion]');
+    if (!boton) return;
+    const i = Number(boton.closest<HTMLElement>('[data-fila]')!.dataset.fila);
+    const fila = estado.filas[i];
+    const accion = boton.dataset.accion;
+    let foco = `[data-fila="${i}"] .dt-fila-cab button`;
+    if (accion === 'dividir') {
+      const cambio = mitad();
+      const [t] = fila.tramos;
+      fila.tramos = [
+        { ...t, hasta: cambio },
+        { ...t, desde: cambio, hasta: estado.salida },
+      ];
+    } else if (accion === 'unir') {
+      fila.tramos = [{ ...fila.tramos[0], desde: estado.entrada, hasta: estado.salida }];
+    } else if (accion === 'copiar') {
+      const j = Number(boton.closest<HTMLElement>('[data-tramo]')!.dataset.tramo);
+      const { producto } = fila.tramos[j];
+      estado.filas.forEach((f, k) =>
+        f.tramos.forEach((t, m) => {
+          if (k > i || (k === i && m > j)) t.producto = producto;
+        }),
+      );
+      foco = `[data-fila="${i}"] [data-tramo="${j}"] [data-accion="copiar"]`;
+    }
+    dibujarFilas();
+    // Las filas se volvieron a dibujar: el foco vuelve al mismo botón.
+    filas.querySelector<HTMLElement>(foco)?.focus();
+  });
+
+  document.querySelectorAll<HTMLInputElement>('input[name="regla"]').forEach((radio) =>
+    radio.addEventListener('change', () => {
+      estado.regla = radio.value as Regla;
+      actualizar();
+    }),
+  );
+  document.querySelectorAll<HTMLInputElement>('input[name="agrupar"]').forEach((radio) =>
+    radio.addEventListener('change', () => {
+      estado.agrupar = radio.value as 'proceso' | 'lista';
+      actualizar();
+    }),
+  );
+
+  const bVer = $<HTMLButtonElement>('#b-ver');
+  bVer.addEventListener('click', () => {
+    const ver = bVer.getAttribute('aria-expanded') !== 'true';
+    bVer.setAttribute('aria-expanded', String(ver));
+    bVer.textContent = ver ? 'Ocultar la hoja' : 'Ver la hoja';
+    $('#hoja').classList.toggle('dt-visible', ver);
+  });
+  $('#b-imprimir').addEventListener('click', () => window.print());
+
+  estado.fecha = fFecha.value = hoy();
+  fEquipo.value = EQUIPO_INICIAL;
+  cargarEquipo(EQUIPO_INICIAL);
+</script>
+
+<style is:global>
+  /* Las filas se dibujan desde el script, así que estos estilos no pueden ir
+     con ámbito: van prefijados con `dt-` y solo existen en esta página. Como no
+     están en una capa, ganan a las utilidades de Tailwind: no fijan márgenes
+     que el marcado ya pone con clases. */
+  .dt {
+    --aviso: #9a3412;
+    --aviso-suave: #fff7ed;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme='light']) .dt {
+      --aviso: #fdba74;
+      --aviso-suave: #2a160b;
+    }
+  }
+
+  :root[data-theme='dark'] .dt {
+    --aviso: #fdba74;
+    --aviso-suave: #2a160b;
+  }
+
+  .dt-h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  .dt-control {
+    display: grid;
+    align-content: start;
+    gap: 0.25rem;
+    min-width: 0;
+  }
+
+  .dt-etq {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--texto-suave);
+  }
+
+  .dt-campo {
+    width: 100%;
+    min-width: 0;
+    border: 1px solid var(--borde);
+    border-radius: 0.375rem;
+    background: var(--superficie);
+    color: var(--texto);
+    padding: 0.45rem 0.6rem;
+    font: inherit;
+    font-size: 0.9375rem;
+  }
+
+  .dt-fijo {
+    padding: 0.45rem 0;
+    font-family: var(--font-mono);
+    font-size: 0.875rem;
+  }
+
+  .dt-boton {
+    border: 1px solid var(--borde);
+    border-radius: var(--radius-card);
+    background: var(--superficie);
+    padding: 0.45rem 0.85rem;
+    font: inherit;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+  }
+
+  .dt-boton:hover {
+    border-color: var(--acento);
+    color: var(--acento);
+  }
+
+  .dt-boton-principal,
+  .dt-boton-principal:hover {
+    border-color: var(--acento);
+    background: var(--acento);
+    color: var(--fondo);
+  }
+
+  .dt-boton-principal:hover {
+    opacity: 0.9;
+  }
+
+  .dt-fila {
+    display: grid;
+    gap: 0.9rem;
+    border: 1px solid var(--borde);
+    border-radius: var(--radius-card);
+    background: var(--superficie);
+    padding: 1rem;
+  }
+
+  .dt-fila-error {
+    border-color: var(--aviso);
+  }
+
+  .dt-fila-cab {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 1rem;
+  }
+
+  .dt-nombre {
+    font-weight: 600;
+  }
+
+  .dt-horas {
+    margin-right: auto;
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    color: var(--texto-suave);
+  }
+
+  .dt-tramo {
+    min-width: 0;
+  }
+
+  .dt-leyenda {
+    margin-bottom: 0.5rem;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--acento);
+  }
+
+  .dt-campos {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+    gap: 0.75rem;
+  }
+
+  /* Sin división, el horario va en la cabecera de la fila; en escritorio,
+     en su columna, para que todas las filas queden alineadas. */
+  .dt-horario {
+    display: none;
+    grid-column: span 2;
+  }
+
+  .dt-con-boton {
+    display: flex;
+    grid-column: span 2;
+    align-items: flex-end;
+    gap: 0.375rem;
+    min-width: 0;
+  }
+
+  .dt-con-boton > .dt-control {
+    flex: 1;
+  }
+
+  .dt-copiar {
+    padding: 0.45rem 0.65rem;
+    line-height: 1.5;
+  }
+
+  @media (min-width: 640px) {
+    .dt-campos {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+
+  /* En escritorio, todas las filas comparten columnas: horario, proceso,
+     estación, producto y cantidad. */
+  @media (min-width: 1024px) {
+    .dt-fila {
+      padding: 1.25rem;
+    }
+
+    .dt-campos {
+      grid-template-columns: 6.75rem 6.75rem minmax(0, 1fr) minmax(0, 1.15fr) minmax(0, 1.35fr) 6.5rem;
+    }
+
+    .dt-horario {
+      display: grid;
+    }
+
+    .dt-con-boton {
+      grid-column: auto;
+    }
+
+    .dt-rango {
+      display: none;
+    }
+  }
+
+  .dt-obs {
+    max-width: 32rem;
+  }
+
+  .dt-avisos {
+    display: grid;
+    gap: 0.375rem;
+  }
+
+  .dt-avisos:empty {
+    display: none;
+  }
+
+  .dt-aviso {
+    border-radius: 0.375rem;
+    padding: 0.4rem 0.65rem;
+    font-size: 0.875rem;
+  }
+
+  .dt-aviso-error {
+    background: var(--aviso-suave);
+    color: var(--aviso);
+    font-weight: 500;
+  }
+
+  .dt-aviso-hueco {
+    border: 1px dashed var(--borde);
+    color: var(--texto-suave);
+  }
+
+  .dt-totales {
+    border-top: 1px solid var(--borde);
+    padding-top: 0.75rem;
+    font-family: var(--font-mono);
+    font-size: 0.875rem;
+  }
+
+  .dt-segmento {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 0.2rem;
+    border: 1px solid var(--borde);
+    border-radius: var(--radius-card);
+    background: var(--superficie);
+    padding: 0.2rem;
+  }
+
+  .dt-segmento label {
+    position: relative;
+  }
+
+  .dt-segmento input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+
+  .dt-segmento span {
+    display: block;
+    border-radius: 0.375rem;
+    padding: 0.4rem 0.8rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--texto-suave);
+  }
+
+  .dt-segmento input:checked + span {
+    background: var(--acento);
+    color: var(--fondo);
+  }
+
+  .dt-segmento input:focus-visible + span {
+    outline: 2px solid var(--acento);
+    outline-offset: 2px;
+  }
+
+  .dt-linea-caja {
+    margin-top: 2rem;
+  }
+
+  .dt-linea {
+    position: relative;
+    display: flex;
+    height: 2.75rem;
+    border: 1px solid var(--borde);
+    border-radius: var(--radius-card);
+  }
+
+  .dt-seg {
+    display: flex;
+    flex: 1 1 0;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    overflow: hidden;
+    padding: 0 0.4rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .dt-seg:first-child {
+    border-radius: calc(var(--radius-card) - 1px) 0 0 calc(var(--radius-card) - 1px);
+  }
+
+  .dt-seg:last-of-type {
+    border-radius: 0 calc(var(--radius-card) - 1px) calc(var(--radius-card) - 1px) 0;
+  }
+
+  .dt-seg:only-of-type {
+    border-radius: calc(var(--radius-card) - 1px);
+  }
+
+  .dt-seg + .dt-seg {
+    border-left: 2px solid var(--superficie);
+  }
+
+  .dt-seg-0 {
+    background: var(--acento);
+    color: var(--fondo);
+  }
+
+  .dt-seg-1 {
+    background: repeating-linear-gradient(
+      135deg,
+      var(--acento-suave) 0 6px,
+      color-mix(in srgb, var(--acento) 14%, var(--acento-suave)) 6px 12px
+    );
+    color: var(--acento);
+  }
+
+  .dt-marca {
+    position: absolute;
+    top: -1.35rem;
+    bottom: 0;
+    border-left: 1px dashed var(--texto);
+    padding-left: 0.25rem;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    line-height: 1;
+    color: var(--texto-suave);
+    pointer-events: none;
+  }
+
+  .dt-borde-hora {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    color: var(--texto);
+  }
+
+  .dt-borde-dia {
+    display: block;
+  }
+
+  .dt-dia {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    border: 1px solid var(--borde);
+    border-radius: var(--radius-card);
+    background: var(--superficie);
+    padding: 0.85rem 1rem;
+  }
+
+  .dt-dia dt {
+    font-size: 0.875rem;
+    color: var(--texto-suave);
+  }
+
+  .dt-dia dd {
+    font-size: 1.5rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--acento);
+  }
+
+  .dt-dia-vacio dd {
+    color: var(--texto-suave);
+  }
+
+  /* La hoja es papel: blanca y en tinta oscura también en modo oscuro. */
+  .dt-hoja {
+    display: none;
+    overflow-x: auto;
+    border: 1px solid var(--borde);
+    border-radius: var(--radius-card);
+    background: #fff;
+    padding: 1.25rem;
+    font-size: 0.8125rem;
+    color: #151a21;
+    box-shadow: 0 1px 3px rgb(0 0 0 / 0.08);
+  }
+
+  .dt-hoja.dt-visible {
+    display: block;
+  }
+
+  .dt-hoja-marca {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #4a5260;
+  }
+
+  .dt-hoja-titulo {
+    margin-top: 0.25rem;
+    font-size: 1.25rem;
+    font-weight: 600;
+  }
+
+  .dt-hoja h3 {
+    margin-top: 1rem;
+    border-bottom: 2px solid #151a21;
+    padding-bottom: 0.15rem;
+    font-size: 0.9375rem;
+    font-weight: 600;
+  }
+
+  .dt-hoja table {
+    width: 100%;
+    min-width: 34rem;
+    margin-top: 0.35rem;
+    border-collapse: collapse;
+    table-layout: fixed;
+  }
+
+  .dt-hoja th,
+  .dt-hoja td {
+    border-bottom: 1px solid #d9dde4;
+    padding: 0.3rem 0.4rem;
+    text-align: left;
+    vertical-align: top;
+  }
+
+  .dt-hoja th {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #4a5260;
+  }
+
+  .dt-hoja .num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .dt-hoja-aviso {
+    margin-top: 0.75rem;
+    font-weight: 600;
+    color: #9a3412;
+  }
+
+  .dt-hoja-pie {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-top: 1rem;
+  }
+
+  .dt-hoja-firma {
+    width: 14rem;
+    margin-top: 2.5rem;
+    border-top: 1px solid #151a21;
+    padding-top: 0.25rem;
+    font-size: 0.75rem;
+  }
+
+  @media print {
+    @page {
+      size: A4;
+      margin: 14mm;
+    }
+
+    body {
+      background: #fff;
+    }
+
+    body > header,
+    body > footer,
+    body > a,
+    .no-imprimir {
+      display: none !important;
+    }
+
+    .dt {
+      max-width: none;
+      padding: 0;
+    }
+
+    .dt-seccion-hoja {
+      margin-top: 0;
+    }
+
+    .dt-hoja {
+      display: block;
+      overflow: visible;
+      margin: 0;
+      border: 0;
+      padding: 0;
+      font-size: 10.5pt;
+      box-shadow: none;
+    }
+
+    .dt-hoja table {
+      min-width: 0;
+    }
+
+    .dt-hoja tr {
+      break-inside: avoid;
+    }
+  }
+</style>

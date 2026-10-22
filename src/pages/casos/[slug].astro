@@ -39,6 +39,13 @@ const esExterno = (url: string) => /^https?:\/\//.test(url);
           ))
         }
       </ul>
+      {
+        caso.demoUrl && (
+          <a href={ruta(caso.demoUrl)} class="mt-6 inline-block font-medium text-[var(--acento)]">
+            Probar la demo, con datos ficticios →
+          </a>
+        )
+      }
     </header>
 
     {
@@ -85,11 +92,20 @@ const esExterno = (url: string) => /^https?:\/\//.test(url);
       </section>
 
       {
-        caso.demo && (
-          <p class="rounded-[var(--radius-card)] border border-dashed border-[var(--borde)] p-5 text-[var(--texto-suave)]">
-            {caso.demo} Todas las demos usan datos ficticios.
-          </p>
-        )
+        caso.demo &&
+          (caso.demoUrl ? (
+            <a
+              href={ruta(caso.demoUrl)}
+              class="block rounded-[var(--radius-card)] border border-[var(--acento)] bg-[var(--acento-suave)] p-5 no-underline hover:opacity-90"
+            >
+              <span class="block font-semibold text-[var(--acento)]">Probar la demo →</span>
+              <span class="mt-1 block text-[var(--texto-suave)]">{caso.demo} Usa datos ficticios.</span>
+            </a>
+          ) : (
+            <p class="rounded-[var(--radius-card)] border border-dashed border-[var(--borde)] p-5 text-[var(--texto-suave)]">
+              {caso.demo} Todas las demos usan datos ficticios.
+            </p>
+          ))
       }
 
       {
