@@ -181,7 +181,8 @@ export const casos: Caso[] = [
       'Tiempo de cierre de la planilla.',
       'Horas de autonomía del respaldo en una prueba de apagón.',
     ],
-    demo: 'Próximamente: una demo con datos ficticios para simular un apagón y seguir las marcas hasta la planilla.',
+    demo: 'Sigue una semana de marcas inventadas: cada una anclada a su turno, las que faltan señaladas, un código sin ficha, un apagón con y sin respaldo, y las horas en el archivo de jornada de la PLAME.',
+    demoUrl: '/demos/huellero',
     enlaces: [verErp],
   },
   {

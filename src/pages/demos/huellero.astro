@@ -1,0 +1,1339 @@
+---
+/**
+ * Demo del huellero (caso `huellero-planilla`). Está hecha desde cero, sin
+ * código del ERP de BBA, y usa los datos inventados de
+ * `src/data/demos/huellero.ts`. Todo corre en el navegador: no guarda nada ni
+ * llama a ningún servidor. No muestra nada de cómo se conecta el huellero.
+ */
+import Base from '../../layouts/Base.astro';
+import Contacto from '../../components/Contacto.astro';
+import { INICIO_SEMANA, colaboradores, corte, plame } from '../../data/demos/huellero.ts';
+import { turnos } from '../../data/demos/turnos.ts';
+import { ruta } from '../../utils/rutas.ts';
+
+const descripcion =
+  'Demo con datos ficticios: una semana de marcas de un huellero, ancladas a su turno, con las que faltan señaladas, un apagón y la vista previa de la PLAME.';
+const enlace =
+  'inline-block rounded-[var(--radius-card)] border border-[var(--borde)] bg-[var(--superficie)] px-4 py-2 font-medium no-underline hover:border-[var(--acento)]';
+
+const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+const [, mes, dia] = INICIO_SEMANA.split('-').map(Number);
+const semana = `del ${dia} al ${dia + 6} de ${MESES[mes - 1]}`;
+const horarios = Object.values(turnos)
+  .map((t) => `${t.nombre.toLowerCase()} (${t.entrada}–${t.salida})`)
+  .join(', ')
+  .replace(/, ([^,]*)$/, ' o $1');
+const nuevo = colaboradores.find((c) => c.sinCodigo)!;
+---
+
+<Base titulo="Demo: del huellero a la planilla" descripcion={descripcion} imagen="huellero-planilla">
+  <article class="dh mx-auto max-w-5xl px-4 pb-20 pt-10 sm:px-6 sm:pt-14">
+    <a
+      href={ruta('/casos/huellero-planilla')}
+      class="text-sm text-[var(--texto-suave)] no-underline hover:text-[var(--acento)]">← El caso: del huellero a la planilla</a
+    >
+
+    <header class="mt-6">
+      <p class="font-mono text-eyebrow uppercase text-[var(--acento)]">Demo · datos ficticios</p>
+      <h1 class="mt-3 text-4xl font-semibold tracking-tight sm:text-5xl">Del huellero a la planilla</h1>
+      <p class="mt-5 max-w-2xl text-lg text-[var(--texto-suave)]">
+        Sigue una semana de marcas como en el sistema que hice para la planta: cada marca se ancla a su turno, lo que no
+        encaja queda señalado y las horas terminan en el archivo de jornada de la PLAME.
+      </p>
+      <p
+        class="mt-6 max-w-2xl rounded-[var(--radius-card)] border border-dashed border-[var(--borde)] p-4 text-sm text-[var(--texto-suave)]"
+      >
+        Colaboradores, códigos, marcas y documentos son inventados. Es una recreación hecha desde cero, no el ERP de la
+        planta, donde Talento Humano está en piloto. Nada se guarda ni se envía: todo pasa en tu navegador.
+      </p>
+      <noscript>
+        <p class="mt-4 font-medium">La demo necesita JavaScript para funcionar.</p>
+      </noscript>
+    </header>
+
+    <section class="mt-12" aria-labelledby="t-marcas">
+      <h2 id="t-marcas" class="dh-h2">1. Las marcas del huellero</h2>
+      <p class="mt-2 max-w-3xl text-[var(--texto-suave)]">
+        El huellero solo anota qué código marcó y a qué hora. No sabe si es una entrada o una salida, ni de qué turno.
+        Estas son las marcas de la semana {semana} y, al lado, lo que hace el ERP con cada una.
+      </p>
+      <div class="mt-5 grid max-w-xl grid-cols-2 gap-4">
+        <label class="dh-control">
+          <span class="dh-etq">Día</span>
+          <select id="f-dia" class="dh-campo"></select>
+        </label>
+        <label class="dh-control">
+          <span class="dh-etq">Colaborador</span>
+          <select id="f-persona" class="dh-campo">
+            <option value="0">Todos</option>
+            {colaboradores.map((c) => <option value={c.codigo}>{c.nombre}</option>)}
+          </select>
+        </label>
+      </div>
+      <ol id="marcas" class="dh-marcas mt-5" tabindex="0" aria-label="Marcas del huellero"></ol>
+      <p id="marcas-resumen" class="mt-3 text-sm text-[var(--texto-suave)]" role="status"></p>
+    </section>
+
+    <section class="mt-14" aria-labelledby="t-turno">
+      <h2 id="t-turno" class="dh-h2">2. Cada marca, con su turno</h2>
+      <p class="mt-2 max-w-3xl text-[var(--texto-suave)]">
+        Cada colaborador tiene un turno de lunes a sábado: {horarios}. El de noche es del día en que se entra, igual
+        que en la <a href={ruta('/demos/turnos')}>demo de turnos</a>.
+      </p>
+      <fieldset class="dh-segmento mt-5">
+        <legend class="sr-only">Cómo se emparejan las marcas</legend>
+        <label><input type="radio" name="modo" value="anclado" checked /><span>Anclado al turno</span></label>
+        <label><input type="radio" name="modo" value="antes" /><span>En orden, como antes</span></label>
+      </fieldset>
+      <p id="modo-explica" class="mt-4 max-w-3xl" aria-live="polite"></p>
+      <div class="dh-semana mt-6">
+        <div id="cabecera" class="dh-cabecera" aria-hidden="true"></div>
+        <ol id="personas" class="dh-personas"></ol>
+      </div>
+      <h3 id="avisos-titulo" class="mt-8 font-semibold"></h3>
+      <ul id="avisos" class="dh-avisos mt-3"></ul>
+    </section>
+
+    <section class="mt-14" aria-labelledby="t-codigo">
+      <h2 id="t-codigo" class="dh-h2">3. Un código que el ERP no conoce</h2>
+      <p class="mt-2 max-w-3xl text-[var(--texto-suave)]">
+        {nuevo.nombre} empezó esta semana y su ficha aún no tiene su código del huellero, el {nuevo.codigo}. Marca igual
+        que todos, y el ERP no descarta esas marcas: las deja pendientes hasta que alguien registra el código.
+      </p>
+      <div class="dh-caja mt-5">
+        <p id="codigo-estado" role="status"></p>
+        <button id="b-codigo" type="button" class="dh-boton dh-boton-principal mt-4"></button>
+      </div>
+    </section>
+
+    <section class="mt-14" aria-labelledby="t-corte">
+      <h2 id="t-corte" class="dh-h2">4. Un apagón en el cambio de turno</h2>
+      <p class="mt-2 max-w-3xl text-[var(--texto-suave)]">
+        El <span id="corte-dia"></span> se va la luz de {corte.desde} a {corte.hasta}, justo cuando sale el turno de
+        noche y entra el de mañana. En la planta, un respaldo con batería mantiene encendido el huellero, y las marcas se
+        guardan hasta que vuelve la conexión.
+      </p>
+      <fieldset class="dh-segmento mt-5">
+        <legend class="sr-only">Respaldo ante el apagón</legend>
+        <label><input type="radio" name="respaldo" value="si" checked /><span>Con respaldo</span></label>
+        <label><input type="radio" name="respaldo" value="no" /><span>Sin respaldo</span></label>
+      </fieldset>
+      <ol id="corte" class="dh-marcas dh-marcas-corte mt-5" aria-label="Marcas durante el apagón"></ol>
+      <p id="corte-resumen" class="mt-4 max-w-3xl font-medium" role="status"></p>
+    </section>
+
+    <section class="mt-14" aria-labelledby="t-horas">
+      <h2 id="t-horas" class="dh-h2">5. Las horas de la semana</h2>
+      <p class="mt-2 max-w-3xl text-[var(--texto-suave)]">
+        Esto es lo que llega a la planilla. Las horas fuera de turno y los turnos incompletos no entran hasta que Recursos
+        Humanos los revisa.
+      </p>
+      <div class="dh-tabla-caja mt-5">
+        <table id="tabla" class="dh-tabla" data-modo="anclado">
+          <thead>
+            <tr>
+              <th scope="col">Colaborador</th>
+              <th scope="col" class="dh-num">Ordinarias</th>
+              <th scope="col" class="dh-num">Extra</th>
+              <th scope="col" class="dh-num dh-solo-anclado">Por revisar</th>
+              <th scope="col" class="dh-num dh-solo-antes">Frente al turno</th>
+            </tr>
+          </thead>
+          <tbody id="resumen"></tbody>
+          <tfoot id="resumen-total"></tfoot>
+        </table>
+      </div>
+      <p id="resumen-nota" class="mt-3 max-w-3xl text-sm text-[var(--texto-suave)]" aria-live="polite"></p>
+    </section>
+
+    <section class="mt-14" aria-labelledby="t-plame">
+      <h2 id="t-plame" class="dh-h2">6. La PLAME: el archivo de jornada</h2>
+      <p class="mt-2 max-w-3xl text-[var(--texto-suave)]">
+        La nómina genera los 6 archivos que importa el PDT PLAME de SUNAT. Este es el que sale de las marcas: el de
+        jornada laboral, con una línea por colaborador y sus horas ordinarias y de sobretiempo.
+      </p>
+      <figure class="dh-archivo mt-5">
+        <figcaption class="dh-partes">
+          <span class="sr-only">Nombre del archivo:</span>
+          <span class="dh-parte"><code>{plame.formulario}</code><span>Formulario</span></span>
+          <span class="dh-parte"><code>{plame.anio}</code><span>Año</span></span>
+          <span class="dh-parte"><code>{plame.mes}</code><span>Mes</span></span>
+          <span class="dh-parte"><code>RUC</code><span>Del empleador</span></span>
+          <span class="dh-parte"><code>.jor</code><span>Jornada</span></span>
+        </figcaption>
+        <ol id="plame" class="dh-lineas" aria-label="Contenido del archivo de jornada"></ol>
+      </figure>
+      <ul class="dh-campos mt-5 max-w-3xl text-sm">
+        <li><span class="dh-campo-n">1</span><span><strong>Tipo de documento:</strong> 01 es DNI.</span></li>
+        <li>
+          <span class="dh-campo-n">2</span><span
+            ><strong>Número de documento:</strong> aquí, uno ficticio con letras. En el archivo real va el DNI.</span
+          >
+        </li>
+        <li><span class="dh-campo-n">3–4</span><span><strong>Horas y minutos ordinarios.</strong></span></li>
+        <li>
+          <span class="dh-campo-n">5–6</span><span
+            ><strong>Horas y minutos de sobretiempo,</strong> es decir, las horas extra.</span
+          >
+        </li>
+      </ul>
+      <p class="mt-4 max-w-3xl text-sm text-[var(--texto-suave)]">
+        Los campos van separados por «|». En la PLAME van las horas de todo el mes ({plame.periodo}); aquí, solo las de
+        esta semana. Los otros 5 archivos también salen de la nómina.
+      </p>
+      <p id="plame-nota" class="mt-3 max-w-3xl font-medium" aria-live="polite"></p>
+    </section>
+
+    <nav class="mt-14 flex flex-wrap gap-3" aria-label="Seguir leyendo">
+      <a href={ruta('/casos/huellero-planilla')} class={enlace}>El caso completo</a>
+      <a href={ruta('/erp')} class={enlace}>El ERP, proceso por proceso</a>
+      <a href={ruta('/demos/turnos')} class={enlace}>La demo de turnos</a>
+    </nav>
+
+    <Contacto />
+  </article>
+</Base>
+
+<script>
+  import {
+    DIAS_CON_TURNO,
+    DOBLE_MARCA,
+    INICIO_SEMANA,
+    TOLERANCIA,
+    colaboradores,
+    corte,
+    marcas,
+    type Colaborador,
+  } from '../../data/demos/huellero.ts';
+  import { turnos } from '../../data/demos/turnos.ts';
+
+  // Cada marca es un minuto de la semana: 0 es el lunes a las 00:00. Así el
+  // turno de noche, de 22:00 a 06:00, es una sola jornada y no se corta a medianoche.
+  const DIA = 24 * 60;
+  const SEMANA = 7;
+  /** La jornada de un turno: lo que pasa de ahí, en el método de antes, es extra. */
+  const JORNADA = 8 * 60;
+  /** Un par de más de 12 h no es un turno: es un descanso contado como trabajado. */
+  const PAR_LARGO = 12 * 60;
+  /** Cuánto antes del turno se busca la entrada y cuánto después, la salida. */
+  const ANTES_DEL_TURNO = 2 * 60;
+  const DESPUES_DEL_TURNO = 6 * 60;
+  /** En la tabla, una diferencia menor que esta es ruido de minutos, no un error. */
+  const DIFERENCIA_VISIBLE = 30;
+
+  type Modo = 'anclado' | 'antes';
+  type Nota = 'repetida' | 'doble' | 'perdida';
+  type Estado =
+    | 'ok'
+    | 'extra'
+    | 'tarde'
+    | 'temprano'
+    | 'sinSalida'
+    | 'sinEntrada'
+    | 'falta'
+    | 'fuera'
+    | 'descanso'
+    | 'pendiente'
+    | 'largo'
+    | 'sinPareja'
+    | 'sinRevisar';
+
+  interface Marca {
+    codigo: number;
+    t: number;
+    enCorte: boolean;
+    /** Su código no está en ninguna ficha: espera a que lo registren. */
+    pendiente: boolean;
+    nota?: Nota;
+  }
+  interface Tramo {
+    estado: Estado;
+    desde?: number;
+    hasta?: number;
+    detalle: string;
+  }
+  interface Aviso {
+    dia: number;
+    texto: string;
+  }
+  interface Resultado {
+    dias: Tramo[][];
+    ordinarias: number;
+    extra: number;
+    revisar: number;
+    avisos: Aviso[];
+    pendiente?: boolean;
+  }
+  interface Proceso {
+    marcas: Marca[];
+    /** Qué es cada marca para el ERP, por "código-minuto": entrada, salida o fuera de turno. */
+    roles: Map<string, string>;
+    anclado: Map<number, Resultado>;
+    antes: Map<number, Resultado>;
+  }
+
+  const estado = {
+    dia: corte.dia as number | 'semana',
+    persona: 0,
+    modo: 'anclado' as Modo,
+    respaldo: true,
+    registrado: false,
+  };
+
+  // --- Horas y fechas ---
+
+  const dos = (n: number) => String(n).padStart(2, '0');
+  const aMinutos = (hora: string) => {
+    const [h, m] = hora.split(':').map(Number);
+    return h * 60 + m;
+  };
+  const hora = (t: number) => `${dos(Math.floor((t % DIA) / 60))}:${dos(t % 60)}`;
+  const horas = (minutos: number) => {
+    const h = Math.floor(minutos / 60);
+    const m = minutos % 60;
+    if (!h) return m ? `${m} min` : '0 h';
+    return m ? `${h} h ${m} min` : `${h} h`;
+  };
+  const diaDe = (t: number) => Math.floor(t / DIA);
+  /** Igual que `horas`, pero "47 h" y "35 min" no se separan por dentro: en el celular, la tabla parte entre los dos. */
+  const horasTabla = (minutos: number) => horas(minutos).replace(/(\d) /g, '$1 ');
+
+  const DIAS =['dom.', 'lun.', 'mar.', 'mié.', 'jue.', 'vie.', 'sáb.'];
+  const [anio, mes, dia1] = INICIO_SEMANA.split('-').map(Number);
+  /** El día `d` de la semana, de 0 (lunes) a 6, como "mié. 14". */
+  function fecha(d: number) {
+    const f = new Date(Date.UTC(anio, mes - 1, dia1 + d));
+    return `${DIAS[f.getUTCDay()]} ${f.getUTCDate()}`;
+  }
+  const clave = (m: Marca) => `${m.codigo}-${m.t}`;
+  const nombre = (codigo: number) => colaboradores.find((c) => c.codigo === codigo)?.nombre ?? '';
+  const nuevo = colaboradores.find((c) => c.sinCodigo)!;
+  const inicioCorte = corte.dia * DIA + aMinutos(corte.desde);
+  const finCorte = corte.dia * DIA + aMinutos(corte.hasta);
+
+  // --- Reglas ---
+
+  /** Las marcas tal como llegan, con las que no cuentan ya señaladas. */
+  function leer(respaldo: boolean, registrado: boolean) {
+    const todas: Marca[] = [];
+    for (const c of colaboradores) {
+      let anterior = -Infinity;
+      (marcas[c.codigo] ?? []).forEach((texto, d) => {
+        for (const h of texto.split(' ').filter(Boolean)) {
+          const t = d * DIA + aMinutos(h);
+          const marca: Marca = {
+            codigo: c.codigo,
+            t,
+            enCorte: t >= inicioCorte && t < finCorte,
+            pendiente: !!c.sinCodigo && !registrado,
+          };
+          // Sin respaldo, el huellero está apagado: esa marca nunca existe.
+          if (marca.enCorte && !respaldo) marca.nota = 'perdida';
+          else if (t === anterior) marca.nota = 'repetida';
+          else if (t - anterior <= DOBLE_MARCA) marca.nota = 'doble';
+          else anterior = t;
+          todas.push(marca);
+        }
+      });
+    }
+    return todas;
+  }
+
+  const vacio = (): Resultado => ({
+    dias: Array.from({ length: SEMANA }, () => []),
+    ordinarias: 0,
+    extra: 0,
+    revisar: 0,
+    avisos: [],
+  });
+
+  /** Los días sin nada: descanso si no hay turno; si lo hay, sin marcas. */
+  function completar(r: Resultado) {
+    r.dias.forEach((tramos, d) => {
+      if (tramos.length) return;
+      tramos.push(d < DIAS_CON_TURNO ? { estado: 'falta', detalle: 'Sin marcas' } : { estado: 'descanso', detalle: 'Descanso' });
+    });
+    return r;
+  }
+
+  /** Anclado al turno: la entrada y la salida se buscan cerca del turno planificado. */
+  function anclar(c: Colaborador, propias: Marca[], roles: Map<string, string>) {
+    const r = vacio();
+    const turno = turnos[c.turno];
+    const entrada = aMinutos(turno.entrada);
+    const duracion = (aMinutos(turno.salida) - entrada + DIA) % DIA || DIA;
+    const usadas = new Set<Marca>();
+    const avisar = (dia: number, texto: string) => r.avisos.push({ dia, texto });
+
+    for (let d = 0; d < DIAS_CON_TURNO; d++) {
+      const inicio = d * DIA + entrada;
+      const fin = inicio + duracion;
+      const dentro = propias.filter((m) => m.t >= inicio - ANTES_DEL_TURNO && m.t <= fin + DESPUES_DEL_TURNO);
+      dentro.forEach((m) => usadas.add(m));
+      const delTurno = `del turno de ${turno.nombre.toLowerCase()} del ${fecha(d)}`;
+      if (!dentro.length) {
+        r.revisar++;
+        avisar(d, `${fecha(d)}: no marcó en todo el turno. Queda como falta, para justificar.`);
+        continue;
+      }
+      const primera = dentro[0];
+      const ultima = dentro[dentro.length - 1];
+      if (dentro.length === 1) {
+        // Una sola marca: es la entrada o la salida, la que quede más cerca. La otra no se inventa.
+        const esEntrada = Math.abs(primera.t - inicio) <= Math.abs(primera.t - fin);
+        roles.set(clave(primera), `${esEntrada ? 'Entrada' : 'Salida'} ${delTurno}`);
+        r.dias[d].push(
+          esEntrada
+            ? { estado: 'sinSalida', desde: primera.t, detalle: 'Falta la salida' }
+            : { estado: 'sinEntrada', hasta: primera.t, detalle: 'Falta la entrada' },
+        );
+        r.revisar++;
+        avisar(
+          d,
+          esEntrada
+            ? `${fecha(d)}: entró a las ${hora(primera.t)} y no hay salida registrada. El sistema no la inventa: el turno queda por revisar.`
+            : `${fecha(d)}: salió a las ${hora(primera.t)} y no hay entrada registrada. El sistema no la inventa: el turno queda por revisar.`,
+        );
+        continue;
+      }
+      roles.set(clave(primera), `Entrada ${delTurno}`);
+      roles.set(clave(ultima), `Salida ${delTurno}`);
+      dentro.slice(1, -1).forEach((m) => roles.set(clave(m), `Marca intermedia ${delTurno}`));
+
+      const tarde = primera.t > inicio + TOLERANCIA ? primera.t - inicio : 0;
+      const temprano = ultima.t < fin - TOLERANCIA ? fin - ultima.t : 0;
+      const extra = ultima.t > fin + TOLERANCIA ? ultima.t - fin : 0;
+      const ordinarias = Math.max(0, (temprano ? ultima.t : fin) - (tarde ? primera.t : inicio));
+      let detalle = horas(ordinarias);
+      if (tarde) detalle += ` · ${horas(tarde)} tarde`;
+      if (temprano) detalle += ` · salió ${horas(temprano)} antes`;
+      if (extra) detalle += ` + ${horas(extra)} extra`;
+      r.dias[d].push({
+        estado: tarde ? 'tarde' : temprano ? 'temprano' : extra ? 'extra' : 'ok',
+        desde: primera.t,
+        hasta: ultima.t,
+        detalle,
+      });
+      r.ordinarias += ordinarias;
+      r.extra += extra;
+      if (tarde) avisar(d, `${fecha(d)}: entró a las ${hora(primera.t)}, ${horas(tarde)} tarde.`);
+      if (temprano) avisar(d, `${fecha(d)}: salió a las ${hora(ultima.t)}, ${horas(temprano)} antes del fin del turno.`);
+    }
+
+    // Lo que no cae cerca de ningún turno no se descarta: queda fuera de turno.
+    for (let d = 0; d < SEMANA; d++) {
+      const sueltas = propias.filter((m) => !usadas.has(m) && diaDe(m.t) === d);
+      if (!sueltas.length) continue;
+      const descanso = d >= DIAS_CON_TURNO;
+      const a = sueltas[0].t;
+      const b = sueltas[sueltas.length - 1].t;
+      sueltas.forEach((m) => roles.set(clave(m), descanso ? 'Fuera de turno: es su día de descanso' : 'Fuera de turno'));
+      r.dias[d].push({ estado: 'fuera', desde: a, hasta: b > a ? b : undefined, detalle: 'Fuera de turno' });
+      r.revisar++;
+      const cuando = b > a ? `de ${hora(a)} a ${hora(b)}` : `a las ${hora(a)}`;
+      const donde = descanso ? 'en su día de descanso' : 'fuera de su turno';
+      const cuanto = b > a ? `Esas ${horas(b - a)} no entran a la planilla hasta que alguien las apruebe.` : 'Queda por revisar.';
+      avisar(d, `${fecha(d)}: marcó ${cuando}, ${donde}. ${cuanto}`);
+    }
+    return completar(r);
+  }
+
+  /** En orden, como antes: entrada, salida, entrada…, sin mirar el turno. */
+  function enOrden(propias: Marca[]) {
+    const r = vacio();
+    const ordenadas = [...propias].sort((a, b) => a.t - b.t);
+    for (let i = 0; i < ordenadas.length; i += 2) {
+      const a = ordenadas[i].t;
+      const b = ordenadas[i + 1]?.t;
+      const d = diaDe(a);
+      if (b === undefined) {
+        r.dias[d].push({ estado: 'sinPareja', desde: a, detalle: 'Sin pareja' });
+        continue;
+      }
+      const duracion = b - a;
+      const ordinarias = Math.min(duracion, JORNADA);
+      const extra = duracion - ordinarias > TOLERANCIA ? duracion - ordinarias : 0;
+      r.dias[d].push({
+        estado: duracion > PAR_LARGO ? 'largo' : d >= DIAS_CON_TURNO ? 'sinRevisar' : extra ? 'extra' : 'ok',
+        desde: a,
+        hasta: b,
+        detalle: duracion > PAR_LARGO ? `${horas(duracion)} seguidas` : horas(duracion),
+      });
+      r.ordinarias += ordinarias;
+      r.extra += extra;
+    }
+    return completar(r);
+  }
+
+  /** Antes nadie veía estos errores; aquí se cuentan, frente a lo anclado al turno. */
+  function avisosDeAntes(antes: Resultado, anclado: Resultado) {
+    const tramos = antes.dias.flatMap((t, d) => t.map((tramo) => ({ ...tramo, d })));
+    const largo = tramos.find((t) => t.estado === 'largo');
+    if (largo) {
+      antes.avisos.push({
+        dia: largo.d,
+        texto: `desde el ${fecha(largo.d)}, cada salida se tomó como entrada y el descanso contó como trabajado. Se cuentan ${horas(antes.ordinarias + antes.extra)} en vez de ${horas(anclado.ordinarias + anclado.extra)}.`,
+      });
+    }
+    for (const t of tramos.filter((t) => t.estado === 'sinRevisar')) {
+      antes.avisos.push({
+        dia: t.d,
+        texto: `${fecha(t.d)}: ${horas(t.hasta! - t.desde!)} en su día de descanso entran a la planilla sin que nadie las revise.`,
+      });
+    }
+  }
+
+  /** La ficha sin código: sus marcas esperan, no se cuentan como faltas. */
+  function sinCodigo(c: Colaborador): Resultado {
+    const r = vacio();
+    for (let d = 0; d < DIAS_CON_TURNO; d++) r.dias[d].push({ estado: 'pendiente', detalle: 'Código sin ficha' });
+    r.avisos.push({ dia: 0, texto: `su ficha no tiene el código ${c.codigo}. Sus marcas no se pierden: esperan en la sección 3.` });
+    r.pendiente = true;
+    return completar(r);
+  }
+
+  function procesar(respaldo: boolean, registrado: boolean): Proceso {
+    const lista = leer(respaldo, registrado);
+    const p: Proceso = { marcas: lista, roles: new Map(), anclado: new Map(), antes: new Map() };
+    for (const c of colaboradores) {
+      if (c.sinCodigo && !registrado) {
+        const r = sinCodigo(c);
+        p.anclado.set(c.codigo, r);
+        p.antes.set(c.codigo, r);
+        continue;
+      }
+      const propias = lista.filter((m) => m.codigo === c.codigo && !m.nota && !m.pendiente);
+      const anclado = anclar(c, propias, p.roles);
+      const antes = enOrden(propias);
+      avisosDeAntes(antes, anclado);
+      p.anclado.set(c.codigo, anclado);
+      p.antes.set(c.codigo, antes);
+    }
+    return p;
+  }
+
+  // --- Dibujo ---
+
+  const $ = <T extends HTMLElement = HTMLElement>(selector: string) => document.querySelector<T>(selector)!;
+  function crear<K extends keyof HTMLElementTagNameMap>(etiqueta: K, clase = '', texto = '') {
+    const nodo = document.createElement(etiqueta);
+    if (clase) nodo.className = clase;
+    if (texto) nodo.textContent = texto;
+    return nodo;
+  }
+  const plural = (n: number, uno: string, varios: string) => `${n} ${n === 1 ? uno : varios}`;
+
+  /** Qué hace el ERP con una marca, en una frase. */
+  function queEs(m: Marca, p: Proceso) {
+    if (m.nota === 'perdida') return 'No se registró: con el apagón, el huellero estaba apagado.';
+    if (m.nota === 'repetida') return 'Llegó dos veces: se guarda una sola.';
+    if (m.nota === 'doble') return 'Marcó dos veces seguidas: cuenta la primera.';
+    if (m.pendiente) return 'Código sin ficha: queda pendiente, no se pierde.';
+    const rol = p.roles.get(clave(m)) ?? '';
+    return m.enCorte ? `${rol}. Durante el apagón: el respaldo la guardó.` : rol;
+  }
+
+  function filaMarca(m: Marca, conDia: boolean, que: string) {
+    const li = crear('li', 'dh-marca');
+    if (m.nota === 'perdida') li.classList.add('dh-marca-perdida');
+    else if (m.nota || m.pendiente) li.classList.add('dh-marca-nota');
+    else if (m.enCorte) li.classList.add('dh-marca-corte');
+    const quien = m.pendiente ? `${m.codigo} · sin ficha` : `${m.codigo} · ${nombre(m.codigo)}`;
+    li.append(
+      crear('span', 'dh-marca-hora', conDia ? `${fecha(diaDe(m.t))} ${hora(m.t)}` : hora(m.t)),
+      crear('span', 'dh-marca-quien', quien),
+      crear('span', 'dh-marca-que', que),
+    );
+    return li;
+  }
+
+  function dibujarMarcas(p: Proceso) {
+    const semana = estado.dia === 'semana';
+    const vistas = p.marcas
+      .filter((m) => (semana || diaDe(m.t) === estado.dia) && (!estado.persona || m.codigo === estado.persona))
+      .sort((a, b) => a.t - b.t || a.codigo - b.codigo);
+    const lista = $('#marcas');
+    lista.classList.toggle('dh-marcas-semana', semana);
+    lista.replaceChildren(...vistas.map((m) => filaMarca(m, semana, queEs(m, p))));
+    if (!vistas.length) lista.append(crear('li', 'dh-marca dh-marca-vacia', 'No hay marcas con este filtro.'));
+
+    const cuantas = (nota: Nota) => vistas.filter((m) => m.nota === nota).length;
+    const dobles = cuantas('repetida') + cuantas('doble');
+    const perdidas = cuantas('perdida');
+    const pendientes = vistas.filter((m) => m.pendiente && !m.nota).length;
+    const partes = [`${semana ? 'La semana' : fecha(estado.dia as number)}: ${plural(vistas.length - perdidas, 'marca', 'marcas')}.`];
+    if (dobles) partes.push(`${plural(dobles, 'no cuenta', 'no cuentan')} dos veces.`);
+    if (pendientes) partes.push(`${plural(pendientes, 'queda pendiente', 'quedan pendientes')}.`);
+    if (perdidas) partes.push(`${plural(perdidas, 'se perdió', 'se perdieron')} en el apagón.`);
+    $('#marcas-resumen').textContent = partes.join(' ');
+  }
+
+  const ALERTA: Estado[] = ['sinSalida', 'sinEntrada', 'fuera', 'largo', 'sinPareja', 'sinRevisar'];
+
+  function celda(tramos: Tramo[], d: number) {
+    const li = crear('li', 'dh-celda');
+    li.append(crear('span', 'dh-celda-dia', fecha(d)));
+    for (const t of tramos) {
+      li.classList.add(`dh-e-${t.estado}`);
+      if (ALERTA.includes(t.estado)) li.classList.add('dh-alerta');
+      if (t.desde !== undefined || t.hasta !== undefined) {
+        const de = t.desde !== undefined ? hora(t.desde) : '?';
+        const a = t.hasta !== undefined ? hora(t.hasta) : t.estado === 'sinSalida' ? '?' : '';
+        li.append(crear('span', 'dh-celda-horas', a ? `${de}–${a}` : de));
+      }
+      li.append(crear('span', 'dh-chip', t.detalle));
+    }
+    return li;
+  }
+
+  function dibujarSemana(p: Proceso) {
+    const resultados = estado.modo === 'anclado' ? p.anclado : p.antes;
+    $('#personas').replaceChildren(
+      ...colaboradores.map((c) => {
+        const r = resultados.get(c.codigo)!;
+        const li = crear('li', 'dh-persona');
+        const quien = crear('div', 'dh-quien');
+        const sub = crear('p', 'dh-sub', `${r.pendiente ? '—' : c.codigo} · ${turnos[c.turno].nombre}`);
+        if (r.pendiente) sub.append(crear('span', 'dh-sin-codigo', ' · sin código'));
+        quien.append(crear('h3', 'dh-nombre', c.nombre), sub);
+        const dias = crear('ul', 'dh-dias');
+        dias.setAttribute('aria-label', `Semana de ${c.nombre}`);
+        dias.append(...r.dias.map((tramos, d) => celda(tramos, d)));
+        li.append(quien, dias);
+        return li;
+      }),
+    );
+
+    $('#modo-explica').textContent =
+      estado.modo === 'anclado'
+        ? `Cada entrada y salida se busca cerca de su turno. Si falta una, el turno queda señalado: el sistema nunca inventa la hora. Se guarda la hora que marcó la persona y, con ${TOLERANCIA} min de tolerancia, lo que pasa de la salida son horas extra.`
+        : 'Antes, las marcas se emparejaban en orden (entrada, salida, entrada…) sin mirar el turno. Basta una marca olvidada para que todo se corra: cada salida pasa por entrada y el descanso cuenta como trabajado.';
+
+    const avisos = colaboradores.flatMap((c) =>
+      resultados.get(c.codigo)!.avisos.map((a) => ({ ...a, quien: c.nombre })),
+    );
+    $('#avisos-titulo').textContent =
+      estado.modo === 'anclado' ? 'Lo que queda señalado para Recursos Humanos' : 'Lo que nadie veía hasta la planilla';
+    $('#avisos').replaceChildren(
+      ...avisos.map((a) => {
+        const li = crear('li', 'dh-aviso');
+        li.append(crear('strong', '', a.quien), ` · ${a.texto}`);
+        return li;
+      }),
+    );
+  }
+
+  function dibujarCodigo(p: Proceso) {
+    const suyas = p.marcas.filter((m) => m.codigo === nuevo.codigo && m.nota !== 'perdida');
+    const boton = $<HTMLButtonElement>('#b-codigo');
+    if (!estado.registrado) {
+      const dias = new Set(suyas.map((m) => diaDe(m.t)));
+      const desde = Math.min(...dias);
+      const hasta = Math.max(...dias);
+      $('#codigo-estado').textContent = `${plural(suyas.length, 'marca', 'marcas')} del código ${nuevo.codigo} esperan, del ${fecha(desde)} al ${fecha(hasta)}.`;
+      boton.textContent = `Registrar el ${nuevo.codigo} en la ficha de ${nuevo.nombre}`;
+      boton.classList.add('dh-boton-principal');
+      return;
+    }
+    const r = p.anclado.get(nuevo.codigo)!;
+    const completos = r.dias.flat().filter((t) => ['ok', 'extra', 'tarde', 'temprano'].includes(t.estado)).length;
+    $('#codigo-estado').textContent = `Listo: las ${suyas.length} marcas se asignaron solas a ${nuevo.nombre} y se anclaron a sus turnos: ${plural(completos, 'turno completo', 'turnos completos')}.`;
+    boton.textContent = 'Quitar el código, para verlo de nuevo';
+    boton.classList.remove('dh-boton-principal');
+  }
+
+  function dibujarCorte(p: Proceso) {
+    // Los roles salen de la misma semana con respaldo: qué era cada marca que se perdió.
+    const conRespaldo = estado.respaldo ? p : procesar(true, estado.registrado);
+    const delCorte = p.marcas.filter((m) => m.enCorte).sort((a, b) => a.t - b.t || a.codigo - b.codigo);
+    $('#corte').replaceChildren(
+      ...delCorte.map((m) => {
+        const rol = conRespaldo.roles.get(clave(m));
+        let que = 'Se registró. ';
+        if (m.nota === 'perdida') {
+          que = rol ? `No se registró. Era la ${rol.charAt(0).toLowerCase()}${rol.slice(1)}: ese turno queda incompleto.` : 'No se registró.';
+        } else {
+          que += m.pendiente ? 'Queda pendiente, como las demás de su código.' : `${rol}.`;
+        }
+        return filaMarca(m, false, que);
+      }),
+    );
+    const perdidas = delCorte.filter((m) => m.nota === 'perdida');
+    const incompletos = perdidas.filter((m) => conRespaldo.roles.has(clave(m))).length;
+    $('#corte-resumen').textContent = estado.respaldo
+      ? `Las ${delCorte.length} marcas del apagón se registraron. Ningún turno queda incompleto.`
+      : `Se perdieron ${plural(perdidas.length, 'marca', 'marcas')} y ${plural(incompletos, 'turno quedó incompleto', 'turnos quedaron incompletos')}. Recursos Humanos tiene que completarlos a mano.`;
+  }
+
+  const total = (r: Resultado) => r.ordinarias + r.extra;
+  /** Lo que cuenta de más el método de antes frente al anclado; los minutos sueltos no suman. */
+  function deMas(p: Proceso, codigo: number) {
+    const dif = total(p.antes.get(codigo)!) - total(p.anclado.get(codigo)!);
+    return dif >= DIFERENCIA_VISIBLE ? dif : 0;
+  }
+
+  function dibujarResumen(p: Proceso) {
+    const antes = estado.modo === 'antes';
+    $('#tabla').dataset.modo = estado.modo;
+    const resultados = antes ? p.antes : p.anclado;
+    const celdaNum = (texto: string, clase = '') => crear('td', `dh-num ${clase}`.trim(), texto);
+    let diferencia = 0;
+    $('#resumen').replaceChildren(
+      ...colaboradores.map((c) => {
+        const r = resultados.get(c.codigo)!;
+        const dif = total(r) - total(p.anclado.get(c.codigo)!);
+        diferencia += deMas(p, c.codigo);
+        const tr = crear('tr');
+        const th = crear('th', '', c.nombre);
+        th.scope = 'row';
+        th.append(crear('span', 'dh-tabla-turno', turnos[c.turno].nombre));
+        tr.append(
+          th,
+          celdaNum(horasTabla(r.ordinarias)),
+          celdaNum(r.extra ? horasTabla(r.extra) : '—'),
+          celdaNum(r.pendiente ? 'Sin código' : r.revisar ? String(r.revisar) : '—', 'dh-solo-anclado'),
+          celdaNum(
+            r.pendiente
+              ? '—'
+              : Math.abs(dif) < DIFERENCIA_VISIBLE
+                ? 'igual'
+                : `${dif > 0 ? '+' : '−'}${horasTabla(Math.abs(dif))}`,
+            `dh-solo-antes ${dif >= DIFERENCIA_VISIBLE ? 'dh-de-mas' : ''}`,
+          ),
+        );
+        if (r.pendiente || r.revisar) tr.classList.add('dh-fila-revisar');
+        return tr;
+      }),
+    );
+    const todos = [...resultados.values()];
+    const suma = (f: (r: Resultado) => number) => todos.reduce((s, r) => s + f(r), 0);
+    const pie = crear('tr');
+    const th = crear('th', '', 'Total');
+    th.scope = 'row';
+    pie.append(
+      th,
+      celdaNum(horasTabla(suma((r) => r.ordinarias))),
+      celdaNum(horasTabla(suma((r) => r.extra))),
+      celdaNum(String(suma((r) => r.revisar)), 'dh-solo-anclado'),
+      celdaNum(
+        diferencia >= DIFERENCIA_VISIBLE ? `+${horasTabla(diferencia)}` : 'igual',
+        `dh-solo-antes ${diferencia >= DIFERENCIA_VISIBLE ? 'dh-de-mas' : ''}`,
+      ),
+    );
+    $('#resumen-total').replaceChildren(pie);
+    const revisar = suma((r) => r.revisar);
+    $('#resumen-nota').textContent = antes
+      ? `Como antes, la planilla pagaría ${horas(diferencia)} más que con las marcas ancladas al turno, sin una sola señal.`
+      : revisar
+        ? `${plural(revisar, 'turno o día queda', 'turnos o días quedan')} por revisar. Sus horas no se adivinan: entran cuando Recursos Humanos los resuelve.`
+        : 'Nada queda por revisar.';
+  }
+
+  function dibujarPlame(p: Proceso) {
+    const antes = estado.modo === 'antes';
+    const resultados = antes ? p.antes : p.anclado;
+    let diferencia = 0;
+    $('#plame').replaceChildren(
+      ...colaboradores.map((c) => {
+        const r = resultados.get(c.codigo)!;
+        const dif = deMas(p, c.codigo);
+        diferencia += dif;
+        const campos = ['01', `FIC-${c.codigo}`, Math.floor(r.ordinarias / 60), r.ordinarias % 60, Math.floor(r.extra / 60), r.extra % 60];
+        const li = crear('li', 'dh-linea');
+        li.append(crear('code', '', `${campos.join('|')}|`));
+        let nota = c.nombre;
+        if (r.pendiente) nota += ': código sin ficha, aún sin horas';
+        else if (antes && dif) {
+          nota += `: ${horas(dif)} de más`;
+          li.classList.add('dh-linea-mal');
+        }
+        li.append(crear('span', 'dh-linea-nota', nota));
+        return li;
+      }),
+    );
+    $('#plame-nota').textContent =
+      antes && diferencia
+        ? `Con las marcas en orden, como antes, el archivo declararía a SUNAT ${horas(diferencia)} de más.`
+        : '';
+  }
+
+  function actualizar() {
+    const p = procesar(estado.respaldo, estado.registrado);
+    dibujarMarcas(p);
+    dibujarSemana(p);
+    dibujarCodigo(p);
+    dibujarCorte(p);
+    dibujarResumen(p);
+    dibujarPlame(p);
+  }
+
+  // --- Controles ---
+
+  const fDia = $<HTMLSelectElement>('#f-dia');
+  fDia.replaceChildren(
+    ...Array.from({ length: SEMANA }, (_, d) => new Option(fecha(d), String(d), false, d === estado.dia)),
+    new Option('Toda la semana', 'semana'),
+  );
+  fDia.addEventListener('input', () => {
+    estado.dia = fDia.value === 'semana' ? 'semana' : Number(fDia.value);
+    actualizar();
+  });
+  const fPersona = $<HTMLSelectElement>('#f-persona');
+  fPersona.addEventListener('input', () => {
+    estado.persona = Number(fPersona.value);
+    actualizar();
+  });
+  document.querySelectorAll<HTMLInputElement>('input[name="modo"]').forEach((radio) =>
+    radio.addEventListener('change', () => {
+      estado.modo = radio.value as Modo;
+      actualizar();
+    }),
+  );
+  document.querySelectorAll<HTMLInputElement>('input[name="respaldo"]').forEach((radio) =>
+    radio.addEventListener('change', () => {
+      estado.respaldo = radio.value === 'si';
+      actualizar();
+    }),
+  );
+  $('#b-codigo').addEventListener('click', () => {
+    estado.registrado = !estado.registrado;
+    actualizar();
+  });
+
+  $('#cabecera').replaceChildren(
+    crear('span', '', 'Colaborador'),
+    ...Array.from({ length: SEMANA }, (_, d) => crear('span', '', fecha(d))),
+  );
+  $('#corte-dia').textContent = fecha(corte.dia);
+  actualizar();
+</script>
+
+<style is:global>
+  /* Las filas se dibujan desde el script, así que estos estilos no pueden ir
+     con ámbito: van prefijados con `dh-` y solo existen en esta página. Como no
+     están en una capa, ganan a las utilidades de Tailwind: no fijan márgenes
+     que el marcado ya pone con clases. Los controles son los de la demo de turnos. */
+  .dh {
+    --aviso: #9a3412;
+    --aviso-suave: #fff7ed;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme='light']) .dh {
+      --aviso: #fdba74;
+      --aviso-suave: #2a160b;
+    }
+  }
+
+  :root[data-theme='dark'] .dh {
+    --aviso: #fdba74;
+    --aviso-suave: #2a160b;
+  }
+
+  .dh-h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  .dh-control {
+    display: grid;
+    align-content: start;
+    gap: 0.25rem;
+    min-width: 0;
+  }
+
+  .dh-etq {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--texto-suave);
+  }
+
+  .dh-campo {
+    width: 100%;
+    min-width: 0;
+    border: 1px solid var(--borde);
+    border-radius: 0.375rem;
+    background: var(--superficie);
+    color: var(--texto);
+    padding: 0.45rem 0.6rem;
+    font: inherit;
+    font-size: 0.9375rem;
+  }
+
+  .dh-boton {
+    border: 1px solid var(--borde);
+    border-radius: var(--radius-card);
+    background: var(--superficie);
+    padding: 0.45rem 0.85rem;
+    font: inherit;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+  }
+
+  .dh-boton:hover {
+    border-color: var(--acento);
+    color: var(--acento);
+  }
+
+  .dh-boton-principal,
+  .dh-boton-principal:hover {
+    border-color: var(--acento);
+    background: var(--acento);
+    color: var(--fondo);
+  }
+
+  .dh-boton-principal:hover {
+    opacity: 0.9;
+  }
+
+  .dh-segmento {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 0.2rem;
+    border: 1px solid var(--borde);
+    border-radius: var(--radius-card);
+    background: var(--superficie);
+    padding: 0.2rem;
+  }
+
+  .dh-segmento label {
+    position: relative;
+  }
+
+  .dh-segmento input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+
+  .dh-segmento span {
+    display: block;
+    border-radius: 0.375rem;
+    padding: 0.4rem 0.8rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--texto-suave);
+  }
+
+  .dh-segmento input:checked + span {
+    background: var(--acento);
+    color: var(--fondo);
+  }
+
+  .dh-segmento input:focus-visible + span {
+    outline: 2px solid var(--acento);
+    outline-offset: 2px;
+  }
+
+  .dh-caja {
+    max-width: 48rem;
+    border: 1px solid var(--borde);
+    border-radius: var(--radius-card);
+    background: var(--superficie);
+    padding: 1rem 1.25rem;
+  }
+
+  /* 1. Las marcas: hora, quién y qué hace el ERP con cada una. */
+  .dh-marcas {
+    --ancho-hora: 3.25rem;
+    max-height: 26rem;
+    overflow-y: auto;
+    border: 1px solid var(--borde);
+    border-radius: var(--radius-card);
+    background: var(--superficie);
+  }
+
+  .dh-marcas-semana {
+    --ancho-hora: 6.75rem;
+  }
+
+  .dh-marcas-corte {
+    max-height: none;
+  }
+
+  .dh-marca {
+    display: grid;
+    grid-template-columns: var(--ancho-hora) minmax(0, 1fr);
+    gap: 0.1rem 0.75rem;
+    border-top: 1px solid var(--borde);
+    padding: 0.5rem 0.9rem;
+    font-size: 0.875rem;
+  }
+
+  .dh-marca:first-child {
+    border-top: 0;
+  }
+
+  .dh-marca-hora {
+    font-family: var(--font-mono);
+  }
+
+  .dh-marca-quien {
+    font-weight: 500;
+  }
+
+  .dh-marca-que {
+    grid-column: 2;
+    font-size: 0.8125rem;
+    color: var(--texto-suave);
+  }
+
+  .dh-marca-nota .dh-marca-que {
+    color: var(--aviso);
+    font-weight: 500;
+  }
+
+  .dh-marca-corte .dh-marca-que {
+    color: var(--acento);
+  }
+
+  .dh-marca-perdida {
+    background: var(--aviso-suave);
+  }
+
+  .dh-marca-perdida .dh-marca-hora,
+  .dh-marca-perdida .dh-marca-quien {
+    text-decoration: line-through;
+    color: var(--texto-suave);
+  }
+
+  .dh-marca-perdida .dh-marca-que {
+    color: var(--aviso);
+    font-weight: 500;
+  }
+
+  .dh-marca-vacia {
+    display: block;
+    color: var(--texto-suave);
+  }
+
+  @media (min-width: 768px) {
+    .dh-marca {
+      grid-template-columns: var(--ancho-hora) 8.5rem minmax(0, 1fr);
+    }
+
+    .dh-marca-que {
+      grid-column: auto;
+    }
+  }
+
+  /* 2. La semana: tarjetas en el celular y una fila por persona en escritorio. */
+  .dh-cabecera {
+    display: none;
+  }
+
+  .dh-personas {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .dh-persona {
+    display: grid;
+    gap: 0.6rem;
+    border: 1px solid var(--borde);
+    border-radius: var(--radius-card);
+    background: var(--superficie);
+    padding: 0.85rem;
+  }
+
+  .dh-nombre {
+    font-weight: 600;
+  }
+
+  .dh-sub {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--texto-suave);
+  }
+
+  .dh-sin-codigo {
+    color: var(--aviso);
+    font-weight: 600;
+  }
+
+  .dh-dias {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.4rem;
+  }
+
+  .dh-celda {
+    display: grid;
+    align-content: start;
+    gap: 0.1rem;
+    min-width: 0;
+    border: 1px solid var(--borde);
+    border-radius: 0.375rem;
+    padding: 0.35rem 0.5rem;
+  }
+
+  .dh-celda-dia {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--texto-suave);
+  }
+
+  .dh-celda-horas {
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    white-space: nowrap;
+  }
+
+  .dh-chip {
+    font-size: 0.75rem;
+    line-height: 1.3;
+    color: var(--texto-suave);
+  }
+
+  .dh-e-extra .dh-chip {
+    color: var(--acento);
+    font-weight: 600;
+  }
+
+  .dh-e-tarde .dh-chip,
+  .dh-e-temprano .dh-chip {
+    color: var(--aviso);
+    font-weight: 500;
+  }
+
+  .dh-alerta {
+    border-color: var(--aviso);
+    background: var(--aviso-suave);
+  }
+
+  .dh-alerta .dh-chip {
+    color: var(--aviso);
+    font-weight: 600;
+  }
+
+  .dh-e-falta,
+  .dh-e-pendiente {
+    border-style: dashed;
+  }
+
+  .dh-e-descanso {
+    border-color: transparent;
+    background: var(--fondo);
+  }
+
+  @media (min-width: 640px) {
+    .dh-dias {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .dh-cabecera {
+      display: grid;
+      grid-template-columns: 7rem repeat(7, minmax(0, 1fr));
+      gap: 0.4rem;
+      margin-bottom: 0.4rem;
+      padding: 0 0.6rem;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--texto-suave);
+    }
+
+    .dh-personas {
+      gap: 0.4rem;
+    }
+
+    .dh-persona {
+      grid-template-columns: 7rem minmax(0, 1fr);
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.45rem 0.6rem;
+    }
+
+    .dh-dias {
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+    }
+
+    .dh-celda {
+      min-height: 3rem;
+    }
+
+    .dh-celda-dia {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+  }
+
+  .dh-avisos {
+    display: grid;
+    gap: 0.4rem;
+    max-width: 48rem;
+  }
+
+  .dh-aviso {
+    border-left: 3px solid var(--aviso);
+    padding: 0.2rem 0 0.2rem 0.75rem;
+    font-size: 0.875rem;
+  }
+
+  /* 5. Las horas. */
+  .dh-tabla-caja {
+    overflow-x: auto;
+    border: 1px solid var(--borde);
+    border-radius: var(--radius-card);
+    background: var(--superficie);
+  }
+
+  .dh-tabla {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+  }
+
+  .dh-tabla th,
+  .dh-tabla td {
+    border-bottom: 1px solid var(--borde);
+    padding: 0.5rem 0.75rem;
+    text-align: left;
+  }
+
+  .dh-tabla thead th {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--texto-suave);
+  }
+
+  .dh-tabla tbody th {
+    font-weight: 600;
+  }
+
+  .dh-tabla tfoot th,
+  .dh-tabla tfoot td {
+    border-bottom: 0;
+    font-weight: 600;
+  }
+
+  .dh-tabla .dh-num {
+    font-family: var(--font-mono);
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  .dh-tabla thead .dh-num {
+    font-family: inherit;
+    white-space: normal;
+  }
+
+  .dh-tabla-turno {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 400;
+    color: var(--texto-suave);
+  }
+
+  .dh-fila-revisar .dh-solo-anclado,
+  .dh-de-mas {
+    color: var(--aviso);
+    font-weight: 600;
+  }
+
+  .dh-tabla[data-modo='anclado'] .dh-solo-antes,
+  .dh-tabla[data-modo='antes'] .dh-solo-anclado {
+    display: none;
+  }
+
+  @media (max-width: 639px) {
+    .dh-tabla th,
+    .dh-tabla td {
+      padding: 0.45rem 0.4rem;
+    }
+
+    .dh-tabla .dh-num {
+      font-size: 0.75rem;
+      white-space: normal;
+    }
+  }
+
+  /* 6. La PLAME: el nombre del archivo por partes y una línea por colaborador. */
+  .dh-archivo {
+    border: 1px solid var(--borde);
+    border-radius: var(--radius-card);
+    background: var(--superficie);
+    padding: 1rem 1.25rem;
+  }
+
+  .dh-partes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem 0.35rem;
+  }
+
+  .dh-parte {
+    display: grid;
+    gap: 0.15rem;
+    border-bottom: 2px solid var(--acento);
+    padding: 0 0.25rem 0.25rem;
+  }
+
+  .dh-parte code {
+    font-family: var(--font-mono);
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--acento);
+  }
+
+  .dh-parte > span {
+    font-size: 0.6875rem;
+    color: var(--texto-suave);
+  }
+
+  .dh-lineas {
+    display: grid;
+    gap: 0.25rem;
+    margin-top: 1rem;
+    border-top: 1px solid var(--borde);
+    padding-top: 0.85rem;
+  }
+
+  .dh-linea {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0 0.75rem;
+  }
+
+  .dh-linea code {
+    font-family: var(--font-mono);
+    font-size: 0.875rem;
+  }
+
+  .dh-linea-nota {
+    font-size: 0.75rem;
+    color: var(--texto-suave);
+  }
+
+  .dh-linea-mal,
+  .dh-linea-mal .dh-linea-nota {
+    color: var(--aviso);
+    font-weight: 600;
+  }
+
+  .dh-campos {
+    display: grid;
+    gap: 0.35rem;
+  }
+
+  .dh-campos li {
+    display: flex;
+    gap: 0.6rem;
+  }
+
+  .dh-campo-n {
+    flex: none;
+    width: 2.25rem;
+    font-family: var(--font-mono);
+    color: var(--acento);
+  }
+</style>
