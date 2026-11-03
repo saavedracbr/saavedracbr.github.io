@@ -1,0 +1,172 @@
+---
+/**
+ * Lámina del post del 3 nov.: "La IA lee la factura. Una persona aprueba el gasto."
+ * Una sola lámina, así que `npm run carruseles` la saca también en PNG
+ * (`docs/marca/lamina-facturas-ia.png`), que es la que va al post como imagen.
+ * Los pasos detallan la tarjeta "Gastos desde la factura" de /erp (erp.ts), en
+ * pasado como allá. La revisión del gasto la confirmó el usuario el 2 nov.
+ */
+import Carrusel from '../../../components/marca/Carrusel.astro';
+import PieLamina from '../../../components/marca/PieLamina.astro';
+import { integraciones, trayectoria } from '../../../data/erp.ts';
+
+const gastos = integraciones.find((i) => i.titulo === 'Gastos desde la factura');
+const etapa = trayectoria.find((t) => t.titulo === 'Google Workspace ↔ ERP');
+if (!gastos || !etapa) throw new Error('carrusel/facturas-ia: falta la integración de gastos o su etapa en erp.ts.');
+
+const pasos = [
+  { herramienta: 'Google Drive', accion: 'La factura en PDF entraba a una carpeta.' },
+  { herramienta: 'IA · Gemini', accion: 'Leía los datos de la factura.' },
+  { herramienta: 'Odoo', accion: 'El gasto se creaba solo, con el PDF adjunto.' },
+  { herramienta: 'Una persona', accion: 'Revisaba el gasto y lo aprobaba.', persona: true },
+];
+---
+
+<Carrusel titulo="Lámina: gastos desde la factura">
+  <section class="lamina">
+    <p class="antetitulo">Alrededor del ERP · {gastos.titulo}</p>
+    <h2 class="titulo">La IA lee la factura.<br />Una persona aprueba el gasto.</h2>
+    <ol class="flujo">
+      {
+        pasos.map((p, i) => (
+          <li class:list={{ persona: p.persona }}>
+            <span class="numero">{i + 1}</span>
+            <span class="paso">
+              <span class="herramienta">{p.herramienta}</span>
+              <span class="accion">{p.accion}</span>
+            </span>
+          </li>
+        ))
+      }
+    </ol>
+    <p class="alerta">Si algo fallaba, llegaba una alerta por correo.</p>
+    <p class="datos">
+      <span>{gastos.volumen}</span>
+      <span>{etapa.periodo}</span>
+      <span>Google Apps Script</span>
+    </p>
+    <PieLamina numero={1} total={1} />
+  </section>
+</Carrusel>
+
+<style>
+  /* Más chico que el h2 de las láminas, para que cada frase quepa en su línea. */
+  .titulo {
+    font-size: 60px;
+  }
+
+  .flujo {
+    position: relative;
+    margin-top: 48px;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: 18px;
+  }
+
+  /* La línea que une los números, por detrás de ellos. */
+  .flujo::before {
+    content: '';
+    position: absolute;
+    left: 31px;
+    top: 48px;
+    bottom: 48px;
+    width: 3px;
+    background: #c3ccd8;
+  }
+
+  .flujo li {
+    position: relative;
+    display: grid;
+    grid-template-columns: 64px 1fr;
+    gap: 28px;
+    align-items: center;
+  }
+
+  .numero {
+    width: 64px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: #ffffff;
+    border: 3px solid #3f8fc4;
+    color: #145c8c;
+    font-family: var(--font-mono), Consolas, monospace;
+    font-size: 28px;
+    font-weight: 600;
+  }
+
+  .paso {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 18px 30px;
+    border-radius: 18px;
+    background: #ffffff;
+    border: 2px solid #d5dbe3;
+  }
+
+  .herramienta {
+    font-family: var(--font-mono), Consolas, monospace;
+    font-size: 23px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #145c8c;
+  }
+
+  .accion {
+    font-size: 36px;
+    line-height: 1.28;
+    color: #151a21;
+  }
+
+  /* El paso de la persona es el que el título resalta. */
+  .persona .numero {
+    background: #145c8c;
+    border-color: #145c8c;
+    color: #ffffff;
+  }
+
+  .persona .paso {
+    background: #145c8c;
+    border-color: #145c8c;
+  }
+
+  .persona .herramienta {
+    color: #cfe3f1;
+  }
+
+  .persona .accion {
+    color: #ffffff;
+    font-weight: 600;
+  }
+
+  .alerta {
+    margin-top: 26px;
+    margin-left: 92px;
+    padding: 20px 30px;
+    border: 3px dashed #9a3b3b;
+    border-radius: 18px;
+    color: #9a3b3b;
+    font-size: 30px;
+    line-height: 1.3;
+  }
+
+  .datos {
+    margin-top: 40px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    font-size: 25px;
+    font-weight: 600;
+  }
+
+  .datos span {
+    padding: 8px 18px;
+    border-radius: 999px;
+    background: #e3edf5;
+    color: #145c8c;
+  }
+</style>

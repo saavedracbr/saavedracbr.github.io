@@ -7,11 +7,16 @@
  * Cada carrusel va a `docs/marca/carrusel-<slug>.pdf`, que git ignora: el PDF lo
  * subes tú al post como documento. Verifica que el PDF tenga una página por
  * lámina, de 1080×1350, y que traiga las fuentes incrustadas.
+ *
+ * Si tiene una sola lámina, sale además en PNG (`docs/marca/lamina-<slug>.png`):
+ * esa va al post como imagen, porque un documento de una página no se desliza.
  */
 import { preview } from 'astro';
 import { existsSync, mkdirSync, readdirSync, readFileSync } from 'node:fs';
 import { join, resolve, dirname, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
+// sharp viene con Astro, que lo usa para optimizar imágenes.
+import sharp from 'sharp';
 import { buscarNavegador, headless } from './navegador.mjs';
 
 const RAIZ = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -19,6 +24,7 @@ const PUERTO = 4331;
 const DIST = join(RAIZ, 'dist');
 const CARPETA = join(DIST, 'marca', 'carrusel');
 // 1080×1350 px a 96 ppp, en puntos de PDF (72 por pulgada).
+const LAMINA_PX = [1080, 1350];
 const PAGINA_PT = [810, 1012.5];
 
 if (!existsSync(CARPETA)) {
@@ -45,6 +51,21 @@ function imprimir(navegador, url, salida) {
   );
 }
 
+function capturar(navegador, url, salida) {
+  return headless(
+    navegador,
+    [
+      `--window-size=${LAMINA_PX.join(',')}`,
+      '--force-device-scale-factor=1',
+      '--hide-scrollbars',
+      '--virtual-time-budget=8000',
+      `--screenshot=${salida}`,
+      url,
+    ],
+    salida,
+  );
+}
+
 function verificar(pdf) {
   const texto = readFileSync(pdf).toString('latin1');
   const paginas = (texto.match(/\/Type\s*\/Page(?![a-z])/g) ?? []).length;
@@ -64,7 +85,8 @@ try {
     const laminas = (html.match(/class="lamina\b/g) ?? []).length;
     const salida = join(RAIZ, 'docs', 'marca', `carrusel-${slug}.pdf`);
     mkdirSync(dirname(salida), { recursive: true });
-    await imprimir(navegador, `http://127.0.0.1:${PUERTO}/marca/carrusel/${slug}/`, salida);
+    const url = `http://127.0.0.1:${PUERTO}/marca/carrusel/${slug}/`;
+    await imprimir(navegador, url, salida);
 
     const { paginas, medida, fuentesIncrustadas } = verificar(salida);
     const tamanoBien = medida && Math.abs(medida[0] - PAGINA_PT[0]) < 1 && Math.abs(medida[1] - PAGINA_PT[1]) < 1;
@@ -74,12 +96,21 @@ try {
       `${bien ? 'OK ' : 'MAL'} ${relative(RAIZ, salida).replaceAll('\\', '/')} · ${paginas} página(s) de ${laminas} lámina(s) · ` +
         `${medida ? medida.join('×') : '?'} pt (pedido ${PAGINA_PT.join('×')}) · fuentes incrustadas: ${fuentesIncrustadas ? 'sí' : 'no'}`,
     );
+
+    if (laminas === 1) {
+      const png = join(RAIZ, 'docs', 'marca', `lamina-${slug}.png`);
+      await capturar(navegador, url, png);
+      const { width, height } = await sharp(png).metadata();
+      const pngBien = width === LAMINA_PX[0] && height === LAMINA_PX[1];
+      if (!pngBien) errores++;
+      console.log(`${pngBien ? 'OK ' : 'MAL'} ${relative(RAIZ, png).replaceAll('\\', '/')} · ${width}×${height} (pedido ${LAMINA_PX.join('×')})`);
+    }
   }
 } finally {
   await servidor.stop();
 }
 
 if (errores > 0) {
-  console.error('Algún carrusel no salió con una página por lámina, de 1080×1350 y con fuentes incrustadas.');
+  console.error('Algún carrusel no salió con una página por lámina, de 1080×1350 y con fuentes incrustadas (o su PNG, de 1080×1350).');
   process.exit(1);
 }
