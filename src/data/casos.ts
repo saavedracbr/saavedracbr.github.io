@@ -241,7 +241,8 @@ export const casos: Caso[] = [
       'Los despachos que salieron sin factura se separan de los que se facturaron pero sin enlace.',
     ],
     porMedir: ['Despachos sin factura detectados por mes.', 'Días entre el despacho y la factura.'],
-    demo: 'Próximamente: una demo con datos ficticios para filtrar despachos y ver cada veredicto.',
+    demo: 'Revisa un mes de guías inventadas: cada despacho con su veredicto, el cruce a mano de antes, las correcciones hasta que todo quede facturado y la factura con su retención o detracción.',
+    demoUrl: '/demos/guia-factura',
     enlaces: [verErp],
   },
   {

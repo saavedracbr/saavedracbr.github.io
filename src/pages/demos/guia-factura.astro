@@ -1,0 +1,1586 @@
+---
+/**
+ * Demo de guía↔factura (caso `ruc-factura`). Está hecha desde cero, sin código
+ * del ERP de BBA, y usa los datos inventados de `src/data/demos/guia-factura.ts`.
+ * Todo corre en el navegador: no guarda nada ni llama a ningún servidor, tampoco
+ * a SUNAT. Las filas se dibujan desde el script, así que el HTML no trae ningún
+ * número de guía, de factura ni de RUC.
+ */
+import Base from '../../layouts/Base.astro';
+import Contacto from '../../components/Contacto.astro';
+import { RETENCION, UMBRAL, guias, motivos, productos } from '../../data/demos/guia-factura.ts';
+import { ruta } from '../../utils/rutas.ts';
+
+const descripcion =
+  'Demo con datos ficticios: un mes de guías de remisión y sus facturas, con los 4 veredictos del control, el cruce a mano de antes y la retención o detracción de cada factura.';
+const enlace =
+  'inline-block rounded-[var(--radius-card)] border border-[var(--borde)] bg-[var(--superficie)] px-4 py-2 font-medium no-underline hover:border-[var(--acento)]';
+
+const ventas = guias.filter((g) => motivos.find((m) => m.codigo === g.motivo)!.venta).length;
+const pct = (tasa: number) => `${Math.round(tasa * 100)} %`;
+const instalacion = productos.instalacion;
+---
+
+<Base titulo="Demo: de la guía a la factura" descripcion={descripcion} imagen="ruc-factura">
+  <article class="dg mx-auto max-w-5xl px-4 pb-20 pt-10 sm:px-6 sm:pt-14">
+    <a
+      href={ruta('/casos/ruc-factura')}
+      class="text-sm text-[var(--texto-suave)] no-underline hover:text-[var(--acento)]">← El caso: del RUC a la factura</a
+    >
+
+    <header class="mt-6">
+      <p class="font-mono text-eyebrow uppercase text-[var(--acento)]">Demo · datos ficticios</p>
+      <h1 class="mt-3 text-4xl font-semibold tracking-tight sm:text-5xl">De la guía a la factura</h1>
+      <p class="mt-5 max-w-2xl text-lg text-[var(--texto-suave)]">
+        ¿Facturamos todo lo que despachamos? Revisa un mes de despachos como en el control que hice para la planta: cada
+        guía de remisión con su factura y, si algo falta, un veredicto que dice qué pasó y cómo se corrige.
+      </p>
+      <p
+        class="mt-6 max-w-2xl rounded-[var(--radius-card)] border border-dashed border-[var(--borde)] p-4 text-sm text-[var(--texto-suave)]"
+      >
+        Clientes, RUC, productos, precios, guías y facturas son inventados. Los RUC tienen el último dígito mal a
+        propósito, así que ninguno puede ser el de una empresa real. Es una recreación hecha desde cero, no el ERP de la
+        planta. Nada se guarda ni se envía: todo pasa en tu navegador.
+      </p>
+      <noscript>
+        <p class="mt-4 font-medium">La demo necesita JavaScript para funcionar.</p>
+      </noscript>
+    </header>
+
+    <section class="mt-12" aria-labelledby="t-guias">
+      <h2 id="t-guias" class="dg-h2">1. Las guías de octubre</h2>
+      <p class="mt-2 max-w-3xl text-[var(--texto-suave)]">
+        Cada despacho sale con su guía de remisión electrónica, y la guía dice por qué se trasladan los bienes. SUNAT
+        tiene {motivos.length} motivos de traslado, y el estándar de Odoo trae 8. Solo las ventas se facturan: las demás
+        guías se ven aquí, pero no se facturan.
+      </p>
+      <label class="dg-control mt-5 max-w-sm">
+        <span class="dg-etq">Motivo de traslado</span>
+        <select id="f-motivo" class="dg-campo"></select>
+      </label>
+      <div class="dg-cabecera dg-cols-guia mt-5" aria-hidden="true">
+        <span>Guía</span><span>Destinatario y carga</span><span>Motivo</span><span></span>
+      </div>
+      <ol id="guias" class="dg-lista dg-lista-alta mt-4 md:mt-0" tabindex="0" aria-label="Guías de octubre"></ol>
+      <p id="guias-resumen" class="mt-3 text-sm text-[var(--texto-suave)]" role="status"></p>
+    </section>
+
+    <section class="mt-14" aria-labelledby="t-control">
+      <h2 id="t-control" class="dg-h2">2. ¿Facturamos todo lo que despachamos?</h2>
+      <p class="mt-2 max-w-3xl text-[var(--texto-suave)]">
+        El control revisa cada una de las {ventas} guías de venta y le da uno de cuatro veredictos. «Sin factura» y
+        «Facturado sin enlace» se corrigen distinto: por eso los separa.
+      </p>
+      <fieldset class="dg-segmento mt-5">
+        <legend class="sr-only">Cómo se revisan las guías</legend>
+        <label><input type="radio" name="modo" value="control" checked /><span>Con el control</span></label>
+        <label><input type="radio" name="modo" value="mano" /><span>Cruzar a mano, como antes</span></label>
+      </fieldset>
+      <p id="modo-explica" class="mt-4 max-w-3xl" aria-live="polite"></p>
+
+      <div id="vista-control">
+        <div id="contadores" class="dg-contadores mt-5" role="group" aria-label="Filtrar por veredicto"></div>
+        <div class="dg-cabecera dg-cols-control mt-5" aria-hidden="true">
+          <span>Guía</span><span>Cliente</span><span>Factura</span><span>Veredicto</span>
+        </div>
+        <ol id="control" class="dg-lista dg-lista-alta mt-4 md:mt-0" tabindex="0" aria-label="Veredicto de cada guía de venta"></ol>
+        <p id="control-resumen" class="mt-3 text-sm text-[var(--texto-suave)]" role="status"></p>
+        <ul id="avisos" class="dg-avisos mt-4"></ul>
+      </div>
+
+      <div id="vista-mano" hidden>
+        <p id="mano-resumen" class="mt-5 max-w-3xl font-medium" role="status"></p>
+        <div class="dg-mano mt-4">
+          <section aria-labelledby="t-mano-guias">
+            <h3 id="t-mano-guias" class="dg-h3">Guías del mes</h3>
+            <ol id="mano-guias" class="dg-lista dg-lista-mano mt-2" tabindex="0" aria-label="Guías del mes"></ol>
+          </section>
+          <section aria-labelledby="t-mano-facturas">
+            <h3 id="t-mano-facturas" class="dg-h3">Facturas del mes</h3>
+            <ol id="mano-facturas" class="dg-lista dg-lista-mano mt-2" tabindex="0" aria-label="Facturas del mes"></ol>
+          </section>
+        </div>
+        <p id="mano-nota" class="mt-4 max-w-3xl" aria-live="polite"></p>
+      </div>
+    </section>
+
+    <section class="mt-14" aria-labelledby="t-corregir">
+      <h2 id="t-corregir" class="dg-h2">3. Corregir lo que falta</h2>
+      <p class="mt-2 max-w-3xl text-[var(--texto-suave)]">
+        Cada veredicto dice qué hacer. Corrige los despachos pendientes y mira cómo cambia el control del paso 2.
+      </p>
+      <div class="dg-caja mt-5">
+        <p id="avance" class="font-medium" role="status"></p>
+        <div class="dg-barra mt-3" aria-hidden="true"><span id="barra"></span></div>
+      </div>
+      <ol id="pendientes" class="dg-pendientes mt-4"></ol>
+      <button id="b-reiniciar" type="button" class="dg-boton mt-4" hidden>Volver a empezar</button>
+    </section>
+
+    <section class="mt-14" aria-labelledby="t-factura">
+      <h2 id="t-factura" class="dg-h2">4. La factura, desde la guía</h2>
+      <p class="mt-2 max-w-3xl text-[var(--texto-suave)]">
+        La factura sale de la guía, una por guía y con lo realmente entregado. Y marca sola si lleva retención o detracción
+        del IGV, nunca las dos.
+      </p>
+      <label class="dg-control mt-5 max-w-md">
+        <span class="dg-etq">Despacho</span>
+        <select id="f-doc" class="dg-campo"></select>
+      </label>
+      <div class="dg-docs mt-5">
+        <article id="doc-guia" class="dg-doc" aria-label="La guía de remisión"></article>
+        <article id="doc-factura" class="dg-doc" aria-label="La factura"></article>
+      </div>
+      <ul class="dg-reglas mt-5 max-w-3xl text-sm">
+        <li>
+          <strong>Retención del IGV, {pct(RETENCION)}:</strong> si el cliente es agente de retención (lo dice SUNAT al
+          registrarlo) y la factura pasa de S/ {UMBRAL}. El cliente la retiene al pagar.
+        </li>
+        <li>
+          <strong>Detracción:</strong> si es un servicio sujeto a detracción, como la {instalacion.nombre.toLowerCase()} ({
+            pct(instalacion.detraccion!)
+          }), y la factura pasa de S/ {UMBRAL}. El cliente deposita ese monto en la cuenta de detracciones del proveedor.
+        </li>
+        <li><strong>Nunca las dos:</strong> si va la detracción, no va la retención.</li>
+      </ul>
+    </section>
+
+    <nav class="mt-14 flex flex-wrap gap-3" aria-label="Seguir leyendo">
+      <a href={ruta('/casos/ruc-factura')} class={enlace}>El caso completo</a>
+      <a href={ruta('/erp')} class={enlace}>El ERP, proceso por proceso</a>
+      <a href={ruta('/demos/huellero')} class={enlace}>La demo del huellero</a>
+    </nav>
+
+    <Contacto />
+  </article>
+</Base>
+
+<script>
+  import {
+    IGV,
+    MES,
+    RETENCION,
+    SERIE_FACTURA,
+    UMBRAL,
+    clientes,
+    facturas as iniciales,
+    guias,
+    motivos,
+    productos,
+    type Factura,
+    type Guia,
+    type Linea,
+    type Producto,
+  } from '../../data/demos/guia-factura.ts';
+
+  type Veredicto = 'correcto' | 'borrador' | 'sinEnlace' | 'sinFactura';
+  type Modo = 'control' | 'mano';
+
+  const VEREDICTOS: Record<Veredicto, { nombre: string; que: string }> = {
+    correcto: { nombre: 'Correcto', que: 'Hay una factura emitida y atada al despacho.' },
+    borrador: { nombre: 'Factura en borrador', que: 'La factura existe, pero aún no se emite.' },
+    sinEnlace: {
+      nombre: 'Facturado sin enlace',
+      que: 'El pedido se facturó, pero la factura no quedó atada a este despacho.',
+    },
+    sinFactura: { nombre: 'Sin factura', que: 'No hay factura por ninguna vía: hay que emitirla.' },
+  };
+  /** El orden del caso, para los contadores. */
+  const ORDEN: Veredicto[] = ['correcto', 'borrador', 'sinEnlace', 'sinFactura'];
+  /** En las listas, lo que falta va arriba: primero lo más grave. */
+  const GRAVEDAD: Veredicto[] = ['sinFactura', 'sinEnlace', 'borrador', 'correcto'];
+
+  interface Revision {
+    veredicto: Veredicto;
+    factura?: Factura;
+  }
+  interface Cargo {
+    tipo: 'retencion' | 'detraccion' | 'ninguno';
+    titulo: string;
+    monto: number;
+    porque: string;
+  }
+
+  const copiar = () => iniciales.map((f) => ({ ...f, lineas: f.lineas.map((l) => ({ ...l })) }));
+  const primerLibre = Math.max(...iniciales.map((f) => f.correlativo ?? 0)) + 1;
+
+  const estado = {
+    modo: 'control' as Modo,
+    filtro: null as Veredicto | null,
+    motivo: '',
+    elegido: 'T001-312',
+    /** La guía que se está buscando a mano. */
+    mano: null as string | null,
+    facturas: copiar(),
+    siguiente: primerLibre,
+    /** Lo que se corrigió en el paso 3, por guía. */
+    hecho: new Map<string, string>(),
+  };
+
+  // --- Datos y reglas ---
+
+  const motivo = (codigo: string) => motivos.find((m) => m.codigo === codigo)!;
+  const cliente = (id: string) => clientes.find((c) => c.id === id)!;
+  const esVenta = (g: Guia) => motivo(g.motivo).venta;
+  const ventas = guias.filter(esVenta);
+  const numero = (f: Factura) => (f.correlativo ? `${SERIE_FACTURA}-${f.correlativo}` : 'Borrador');
+  const destinatario = (g: Guia) => (g.cliente ? cliente(g.cliente).razonSocial : g.destino!);
+
+  const DIAS = ['dom.', 'lun.', 'mar.', 'mié.', 'jue.', 'vie.', 'sáb.'];
+  function fecha(dia: number) {
+    const f = new Date(Date.UTC(MES.anio, MES.mes - 1, dia));
+    return `${DIAS[f.getUTCDay()]} ${f.getUTCDate()} oct.`;
+  }
+  const soles = (n: number) =>
+    `S/ ${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const cant = (n: number) => n.toLocaleString('en-US');
+  const redondear = (n: number) => Math.round(n * 100) / 100;
+  const pct = (tasa: number) => `${Math.round(tasa * 100)} %`;
+  const PLURAL: Record<string, string> = { millar: 'millares', ciento: 'cientos', local: 'locales' };
+  const unidad = (p: Producto, n: number) => (n === 1 ? p.unidad : (PLURAL[p.unidad] ?? p.unidad));
+  const carga = (l: Linea) => {
+    const p = productos[l.producto];
+    return `${cant(l.cantidad)} ${unidad(p, l.cantidad)} · ${p.nombre}`;
+  };
+
+  function importes(lineas: Linea[]) {
+    const subtotal = redondear(lineas.reduce((s, l) => s + l.cantidad * productos[l.producto].precio, 0));
+    const igv = redondear(subtotal * IGV);
+    return { subtotal, igv, total: redondear(subtotal + igv) };
+  }
+
+  /** Retención o detracción: la factura lo decide sola, y nunca lleva las dos. */
+  function cargo(f: Factura): Cargo {
+    const { total } = importes(f.lineas);
+    const c = cliente(f.cliente);
+    const sujeto = f.lineas.map((l) => productos[l.producto]).find((p) => p.detraccion);
+    const pasa = total > UMBRAL;
+    const umbral = soles(UMBRAL);
+    if (sujeto && pasa) {
+      const tasa = sujeto.detraccion!;
+      const tambien = c.agenteRetencion
+        ? ` ${c.razonSocial} también es agente de retención, pero si va la detracción no va la retención: nunca las dos.`
+        : '';
+      return {
+        tipo: 'detraccion',
+        titulo: `Detracción del ${pct(tasa)}`,
+        monto: redondear(total * tasa),
+        porque: `La ${sujeto.nombre.toLowerCase()} es un servicio sujeto a detracción y la factura pasa de ${umbral}: el cliente deposita el ${pct(tasa)} del total en la cuenta de detracciones del proveedor, en el Banco de la Nación.${tambien}`,
+      };
+    }
+    if (c.agenteRetencion && pasa) {
+      return {
+        tipo: 'retencion',
+        titulo: `Retención del IGV, ${pct(RETENCION)}`,
+        monto: redondear(total * RETENCION),
+        porque: `${c.razonSocial} es agente de retención, según SUNAT, y la factura pasa de ${umbral}: al pagar, retiene el ${pct(RETENCION)} del total.`,
+      };
+    }
+    const porque = sujeto
+      ? `La ${sujeto.nombre.toLowerCase()} está sujeta a detracción, pero la factura no pasa de ${umbral}.`
+      : c.agenteRetencion
+        ? `${c.razonSocial} es agente de retención, pero la factura no pasa de ${umbral}.`
+        : `${c.razonSocial} no es agente de retención, y nada de la factura está sujeto a detracción.`;
+    return { tipo: 'ninguno', titulo: 'Sin retención ni detracción', monto: 0, porque };
+  }
+
+  /** El veredicto del control para una guía de venta. */
+  function revisar(g: Guia): Revision {
+    const atadas = estado.facturas.filter((f) => f.guia === g.numero);
+    const emitida = atadas.find((f) => f.estado === 'emitida');
+    if (emitida) return { veredicto: 'correcto', factura: emitida };
+    if (atadas.length) return { veredicto: 'borrador', factura: atadas[0] };
+    const delPedido = estado.facturas.find(
+      (f) => g.pedido && f.pedido === g.pedido && !f.guia && f.estado === 'emitida',
+    );
+    if (delPedido) return { veredicto: 'sinEnlace', factura: delPedido };
+    return { veredicto: 'sinFactura' };
+  }
+
+  const porGravedad = (a: Guia, b: Guia) =>
+    GRAVEDAD.indexOf(revisar(a).veredicto) - GRAVEDAD.indexOf(revisar(b).veredicto) || a.dia - b.dia;
+
+  /** Los despachos que el paso 3 corrige: los que no empiezan en "Correcto". */
+  const pendientes = ventas.filter((g) => revisar(g).veredicto !== 'correcto').sort(porGravedad);
+  const inicial = new Map(pendientes.map((g) => [g.numero, revisar(g).veredicto]));
+
+  /** Aparte del veredicto: la guía declara un comprobante que no es su factura. */
+  function avisos() {
+    return ventas.flatMap((g) => {
+      const r = revisar(g);
+      if (!g.declara || r.veredicto !== 'correcto' || numero(r.factura!) === g.declara) return [];
+      const de = estado.facturas.find((f) => numero(f) === g.declara)?.guia;
+      const deQuien = de ? ` (la ${g.declara} es de la ${de})` : '';
+      return [
+        {
+          guia: g.numero,
+          texto: `la guía declara la ${g.declara}, pero su factura enlazada es la ${numero(r.factura!)}${deQuien}. Hay que revisar cuál está bien.`,
+        },
+      ];
+    });
+  }
+
+  // --- Dibujo ---
+
+  const $ = <T extends HTMLElement = HTMLElement>(selector: string) => document.querySelector<T>(selector)!;
+  function crear<K extends keyof HTMLElementTagNameMap>(etiqueta: K, clase = '', texto = '') {
+    const nodo = document.createElement(etiqueta);
+    if (clase) nodo.className = clase;
+    if (texto) nodo.textContent = texto;
+    return nodo;
+  }
+  const plural = (n: number, uno: string, varios: string) => `${n} ${n === 1 ? uno : varios}`;
+  const chip = (v: Veredicto) => crear('span', `dg-chip dg-v-${v}`, VEREDICTOS[v].nombre);
+
+  function celdaGuia(g: Guia) {
+    const celda = crear('span', 'dg-c-guia');
+    celda.append(crear('strong', '', g.numero), crear('span', '', fecha(g.dia)));
+    return celda;
+  }
+
+  function dibujarGuias() {
+    const vistas = guias.filter((g) => !estado.motivo || g.motivo === estado.motivo);
+    $('#guias').replaceChildren(
+      ...vistas.map((g) => {
+        const m = motivo(g.motivo);
+        const li = crear('li', `dg-fila dg-cols-guia ${m.venta ? '' : 'dg-no-venta'}`.trim());
+        const quien = crear('span', 'dg-c-quien', destinatario(g));
+        quien.append(...g.lineas.map((l) => crear('span', 'dg-sub', carga(l))));
+        li.append(
+          celdaGuia(g),
+          quien,
+          crear('span', 'dg-c-motivo', `${m.codigo} · ${m.nombre}`),
+          crear('span', `dg-chip ${m.venta ? 'dg-chip-si' : 'dg-chip-no'}`, m.venta ? 'Se factura' : 'No se factura'),
+        );
+        return li;
+      }),
+    );
+    if (!vistas.length) $('#guias').append(crear('li', 'dg-fila dg-vacia', 'No hay guías con este motivo en octubre.'));
+
+    const m = estado.motivo ? motivo(estado.motivo) : null;
+    $('#guias-resumen').textContent = m
+      ? vistas.length
+        ? `${m.codigo} · ${m.nombre}: ${plural(vistas.length, 'guía', 'guías')}. ${m.venta ? 'Se facturan.' : 'No se facturan.'}`
+        : `${m.codigo} · ${m.nombre}: ninguna guía este mes.`
+      : `${guias.length} guías en octubre: ${ventas.length} de venta, que se facturan, y ${guias.length - ventas.length} que no se facturan.`;
+  }
+
+  function celdaFactura(r: Revision) {
+    if (!r.factura) return crear('span', 'dg-c-factura dg-falta', '—');
+    if (r.veredicto === 'sinEnlace') {
+      const celda = crear('span', 'dg-c-factura', numero(r.factura));
+      celda.append(crear('span', 'dg-sub', `del pedido ${r.factura.pedido}, sin atar`));
+      return celda;
+    }
+    return crear('span', `dg-c-factura ${r.veredicto === 'borrador' ? 'dg-falta' : ''}`.trim(), numero(r.factura));
+  }
+
+  function dibujarControl() {
+    const conteo = new Map<Veredicto, number>(ORDEN.map((v) => [v, 0]));
+    for (const g of ventas) conteo.set(revisar(g).veredicto, conteo.get(revisar(g).veredicto)! + 1);
+
+    $('#contadores').replaceChildren(
+      ...ORDEN.map((v) => {
+        const boton = crear('button', `dg-contador dg-v-${v}`);
+        boton.type = 'button';
+        boton.dataset.veredicto = v;
+        boton.setAttribute('aria-pressed', String(estado.filtro === v));
+        boton.append(crear('strong', '', String(conteo.get(v))), crear('span', '', VEREDICTOS[v].nombre));
+        return boton;
+      }),
+    );
+
+    const avisosMes = avisos();
+    const vistas = ventas.filter((g) => !estado.filtro || revisar(g).veredicto === estado.filtro).sort(porGravedad);
+    $('#control').replaceChildren(
+      ...vistas.map((g) => {
+        const r = revisar(g);
+        const li = crear('li', `dg-fila dg-cols-control dg-fila-${r.veredicto}`);
+        li.append(celdaGuia(g), crear('span', 'dg-c-quien', destinatario(g)), celdaFactura(r), chip(r.veredicto));
+        if (r.veredicto !== 'correcto') li.append(crear('span', 'dg-c-que', VEREDICTOS[r.veredicto].que));
+        if (avisosMes.some((a) => a.guia === g.numero)) {
+          li.append(crear('span', 'dg-c-que dg-c-aviso', 'Aviso: la guía declara otra factura (abajo).'));
+        }
+        return li;
+      }),
+    );
+
+    const pendientesHoy = ventas.length - conteo.get('correcto')!;
+    $('#control-resumen').textContent = estado.filtro
+      ? `${VEREDICTOS[estado.filtro].nombre}: ${plural(vistas.length, 'despacho', 'despachos')}. Toca el veredicto otra vez para ver todos.`
+      : pendientesHoy
+        ? `${plural(pendientesHoy, 'despacho tiene', 'despachos tienen')} algo pendiente, de ${ventas.length} de venta.`
+        : `Los ${ventas.length} despachos de venta tienen su factura emitida y enlazada.`;
+
+    $('#avisos').replaceChildren(
+      ...avisosMes.map((a) => {
+        const li = crear('li', 'dg-aviso');
+        li.append(crear('strong', '', `Aviso · ${a.guia}:`), ` ${a.texto}`);
+        return li;
+      }),
+    );
+  }
+
+  function dibujarMano() {
+    const iguales = ventas.length === estado.facturas.length;
+    const conAlgo = ventas.filter((g) => revisar(g).veredicto !== 'correcto').length;
+    let resumen = `${ventas.length} guías de venta y ${estado.facturas.length} facturas en el mes: `;
+    resumen += iguales ? 'por los totales, octubre cuadra.' : 'los totales no cuadran, y no dicen por qué.';
+    if (iguales && conAlgo) {
+      resumen += ` Y aun así, el control encuentra ${plural(conAlgo, 'despacho pendiente', 'despachos pendientes')}.`;
+    }
+    $('#mano-resumen').textContent = resumen;
+
+    const elegida = guias.find((g) => g.numero === estado.mano);
+    $('#mano-guias').replaceChildren(
+      ...guias.map((g) => {
+        const li = crear('li');
+        const boton = crear('button', `dg-mano-guia ${esVenta(g) ? '' : 'dg-no-venta'}`.trim());
+        boton.type = 'button';
+        boton.dataset.guia = g.numero;
+        boton.setAttribute('aria-pressed', String(g === elegida));
+        boton.append(
+          crear('span', 'dg-mano-num', g.numero),
+          crear('span', 'dg-mano-dato', fecha(g.dia)),
+          crear('span', 'dg-mano-quien', destinatario(g)),
+          crear('span', 'dg-mano-dato', `Motivo ${g.motivo}`),
+        );
+        li.append(boton);
+        return li;
+      }),
+    );
+
+    const ordenadas = [...estado.facturas].sort(
+      (a, b) => (a.correlativo ?? Infinity) - (b.correlativo ?? Infinity) || a.dia - b.dia,
+    );
+    const delCliente = elegida?.cliente;
+    $('#mano-facturas').replaceChildren(
+      ...ordenadas.map((f) => {
+        const li = crear('li', 'dg-mano-factura');
+        if (delCliente) li.classList.add(f.cliente === delCliente ? 'dg-candidata' : 'dg-apagada');
+        li.append(
+          crear('span', 'dg-mano-num', numero(f)),
+          crear('span', 'dg-mano-dato', fecha(f.dia)),
+          crear('span', 'dg-mano-quien', cliente(f.cliente).razonSocial),
+          crear('span', 'dg-mano-dato dg-mano-monto', soles(importes(f.lineas).total)),
+        );
+        return li;
+      }),
+    );
+
+    let nota = 'Toca una guía para buscar su factura a mano.';
+    if (elegida && !esVenta(elegida)) {
+      const m = motivo(elegida.motivo);
+      nota = `La ${elegida.numero} es por el motivo ${m.codigo} (${m.nombre.toLowerCase()}): no se factura. A mano, también hay que darse cuenta y descartarla.`;
+    } else if (elegida) {
+      const c = cliente(elegida.cliente!);
+      const n = estado.facturas.filter((f) => f.cliente === c.id).length;
+      nota = `La ${elegida.numero} es de ${c.razonSocial}, y en la lista hay ${plural(n, 'factura suya', 'facturas suyas')}. Ninguna dice de qué guía es: hay que abrirlas una por una y comparar productos y cantidades.`;
+    }
+    $('#mano-nota').textContent = nota;
+  }
+
+  function dibujarModo() {
+    const mano = estado.modo === 'mano';
+    $('#vista-control').hidden = mano;
+    $('#vista-mano').hidden = !mano;
+    $('#modo-explica').textContent = mano
+      ? 'Antes, la factura no quedaba atada a su guía. Para saber si faltaba alguna había que cruzar dos listas, guía por guía, buscando por cliente y por monto.'
+      : 'Cada guía de venta tiene su veredicto; las que no son venta quedan fuera. Toca un veredicto para ver solo esos despachos.';
+  }
+
+  function dibujarPendientes() {
+    const listos = ventas.filter((g) => revisar(g).veredicto === 'correcto').length;
+    $('#avance').textContent =
+      listos === ventas.length
+        ? `Octubre, todo facturado: ${listos} de ${ventas.length} despachos de venta.`
+        : `${listos} de ${ventas.length} despachos de venta tienen su factura emitida y enlazada.`;
+    $('#barra').style.width = `${(listos / ventas.length) * 100}%`;
+    $('#barra').classList.toggle('dg-barra-llena', listos === ventas.length);
+
+    $('#pendientes').replaceChildren(
+      ...pendientes.map((g) => {
+        const r = revisar(g);
+        const antes = inicial.get(g.numero)!;
+        const li = crear('li', `dg-pendiente dg-fila-${r.veredicto}`);
+        const cab = crear('p', 'dg-pendiente-cab');
+        cab.append(crear('strong', '', g.numero), ` · ${fecha(g.dia)}`);
+        li.append(cab, crear('p', 'dg-sub', destinatario(g)), chip(r.veredicto));
+        const hecho = estado.hecho.get(g.numero);
+        if (hecho) {
+          li.append(crear('p', 'dg-pendiente-que dg-listo', hecho));
+          return li;
+        }
+        let que = '';
+        let accion = '';
+        if (antes === 'sinFactura') {
+          que = `Nadie emitió su factura. Sale desde la guía, con lo entregado: ${g.lineas.map(carga).join('; ')}.`;
+          accion = 'Emitir desde la guía';
+        } else if (antes === 'sinEnlace') {
+          que = `La ${numero(r.factura!)} se hizo desde el pedido ${g.pedido} y no quedó atada al despacho.`;
+          accion = `Enlazar la ${numero(r.factura!)}`;
+        } else {
+          que = 'Su factura está en borrador: todavía no tiene número y SUNAT no la tiene.';
+          accion = 'Emitir la factura';
+        }
+        const boton = crear('button', 'dg-boton dg-boton-principal', accion);
+        boton.type = 'button';
+        boton.dataset.guia = g.numero;
+        li.append(crear('p', 'dg-pendiente-que', que), boton);
+        return li;
+      }),
+    );
+    $('#b-reiniciar').hidden = estado.hecho.size === 0;
+  }
+
+  /** Una celda de dato del documento: etiqueta arriba, valor abajo. */
+  function dato(etiqueta: string, valor: string) {
+    const div = crear('div', 'dg-dato');
+    div.append(crear('dt', '', etiqueta), crear('dd', '', valor));
+    return div;
+  }
+
+  function tablaLineas(lineas: Linea[], conPrecio: boolean) {
+    const tabla = crear('table', 'dg-tabla');
+    const cab = crear('tr');
+    const columnas = conPrecio ? ['Cant.', 'Descripción', 'V. unit.', 'Importe'] : ['Cant.', 'Unidad', 'Descripción'];
+    cab.append(
+      ...columnas.map((t, i) => {
+        const th = crear('th', i === 0 || (conPrecio && i > 1) ? 'dg-num' : '', t);
+        th.scope = 'col';
+        return th;
+      }),
+    );
+    const cuerpo = crear('tbody');
+    cuerpo.append(
+      ...lineas.map((l) => {
+        const p = productos[l.producto];
+        const tr = crear('tr');
+        if (conPrecio) {
+          tr.append(
+            crear('td', 'dg-num', cant(l.cantidad)),
+            crear('td', '', `${p.nombre} (${unidad(p, l.cantidad)})`),
+            crear('td', 'dg-num', soles(p.precio)),
+            crear('td', 'dg-num', soles(redondear(l.cantidad * p.precio))),
+          );
+        } else {
+          tr.append(crear('td', 'dg-num', cant(l.cantidad)), crear('td', '', unidad(p, l.cantidad)), crear('td', '', p.nombre));
+        }
+        return tr;
+      }),
+    );
+    const thead = crear('thead');
+    thead.append(cab);
+    tabla.append(thead, cuerpo);
+    return tabla;
+  }
+
+  /** Los servicios no tienen guía: se eligen por su factura. */
+  const servicios = iniciales.filter((f) => f.lineas.some((l) => productos[l.producto].detraccion));
+  const claveServicio = (f: Factura) => numero(f);
+
+  function dibujarGuiaDoc(g: Guia | undefined) {
+    const doc = $('#doc-guia');
+    if (!g) {
+      doc.replaceChildren(
+        crear('p', 'dg-doc-tipo', 'Guía de remisión'),
+        crear('h3', 'dg-doc-num', 'Sin guía'),
+        crear(
+          'p',
+          'dg-doc-nota',
+          'Un servicio no traslada bienes: no tiene guía y no entra al control. Su factura igual decide sola si lleva retención o detracción.',
+        ),
+      );
+      return;
+    }
+    const m = motivo(g.motivo);
+    const datos = crear('dl', 'dg-datos');
+    const c = cliente(g.cliente!);
+    datos.append(
+      dato('Fecha', fecha(g.dia)),
+      dato('Motivo', `${m.codigo} · ${m.nombre}`),
+      dato('Destinatario', `${c.razonSocial} · RUC ${c.ruc}`),
+      dato('Pedido', g.pedido ?? '—'),
+    );
+    doc.replaceChildren(
+      crear('p', 'dg-doc-tipo', 'Guía de remisión electrónica'),
+      crear('h3', 'dg-doc-num', g.numero),
+      datos,
+      tablaLineas(g.lineas, false),
+    );
+    const parcial = g.lineas.find((l) => l.pedida && l.pedida !== l.cantidad);
+    if (parcial) {
+      const p = productos[parcial.producto];
+      doc.append(
+        crear(
+          'p',
+          'dg-doc-nota dg-doc-destacado',
+          `Se pidieron ${cant(parcial.pedida!)} ${unidad(p, parcial.pedida!)} en el pedido ${g.pedido} y se entregaron ${cant(parcial.cantidad)}: la factura sale por ${cant(parcial.cantidad)}.`,
+        ),
+      );
+    }
+  }
+
+  function dibujarFacturaDoc(f: Factura, estadoTexto: string, vistaPrevia: boolean) {
+    const c = cliente(f.cliente);
+    const { subtotal, igv, total } = importes(f.lineas);
+    const k = cargo(f);
+    const doc = $('#doc-factura');
+    doc.classList.toggle('dg-doc-previa', vistaPrevia);
+    const datos = crear('dl', 'dg-datos');
+    datos.append(
+      dato('Cliente', c.razonSocial),
+      dato('RUC', c.ruc),
+      dato('En SUNAT', `Activo y habido · agente de retención: ${c.agenteRetencion ? 'sí' : 'no'}`),
+    );
+    const sumas = crear('dl', 'dg-sumas');
+    const suma = (etiqueta: string, valor: number, clase = '') => {
+      const div = crear('div', clase);
+      div.append(crear('dt', '', etiqueta), crear('dd', '', soles(valor)));
+      return div;
+    };
+    sumas.append(
+      suma('Op. gravada', subtotal),
+      suma(`IGV (${pct(IGV)})`, igv),
+      suma('Importe total', total, 'dg-sumas-total'),
+    );
+
+    const caja = crear('div', `dg-cargo dg-cargo-${k.tipo}`);
+    caja.append(crear('p', 'dg-cargo-titulo', k.titulo));
+    if (k.monto) {
+      const montos = crear('dl', 'dg-sumas');
+      montos.append(
+        suma(k.tipo === 'retencion' ? 'Retención' : 'Detracción', k.monto),
+        suma('Neto a cobrar', redondear(total - k.monto), 'dg-sumas-total'),
+      );
+      caja.append(montos);
+    }
+    caja.append(crear('p', 'dg-cargo-porque', k.porque));
+    if (k.tipo === 'detraccion') {
+      caja.append(crear('p', 'dg-leyenda', 'Operación sujeta al Sistema de Pago de Obligaciones Tributarias (SPOT).'));
+    }
+
+    doc.replaceChildren(
+      crear('p', 'dg-doc-tipo', 'Factura electrónica'),
+      crear('h3', 'dg-doc-num', f.correlativo ? numero(f) : vistaPrevia ? 'Aún sin número' : 'Borrador'),
+      crear('p', 'dg-doc-estado', estadoTexto),
+      datos,
+      tablaLineas(f.lineas, true),
+      sumas,
+      caja,
+    );
+  }
+
+  function dibujarDocumentos() {
+    const servicio = servicios.find((f) => claveServicio(f) === estado.elegido);
+    if (servicio) {
+      dibujarGuiaDoc(undefined);
+      dibujarFacturaDoc(servicio, `Emitida el ${fecha(servicio.dia)}: es un servicio, así que no tiene guía.`, false);
+      return;
+    }
+    const g = guias.find((x) => x.numero === estado.elegido)!;
+    dibujarGuiaDoc(g);
+    const r = revisar(g);
+    if (r.veredicto === 'sinFactura') {
+      const previa: Factura = {
+        dia: MES.cierre,
+        cliente: g.cliente!,
+        pedido: g.pedido,
+        guia: g.numero,
+        estado: 'borrador',
+        lineas: g.lineas.map(({ producto, cantidad }) => ({ producto, cantidad })),
+      };
+      dibujarFacturaDoc(previa, 'Nadie la emitió. Así saldría desde la guía, con lo entregado: se emite en el paso 3.', true);
+      return;
+    }
+    const f = r.factura!;
+    const texto =
+      r.veredicto === 'correcto'
+        ? `Emitida el ${fecha(f.dia)} y atada a la ${g.numero}.`
+        : r.veredicto === 'borrador'
+          ? 'En borrador: todavía no se emite. Se emite en el paso 3.'
+          : `Emitida el ${fecha(f.dia)}, pero desde el pedido: no está atada a esta guía. Se enlaza en el paso 3.`;
+    dibujarFacturaDoc(f, texto, false);
+  }
+
+  function actualizar() {
+    dibujarGuias();
+    dibujarModo();
+    dibujarControl();
+    dibujarMano();
+    dibujarPendientes();
+    dibujarDocumentos();
+  }
+
+  // --- Acciones del paso 3 ---
+
+  function corregir(n: string) {
+    const g = guias.find((x) => x.numero === n)!;
+    const r = revisar(g);
+    if (r.veredicto === 'borrador') {
+      const f = r.factura!;
+      f.estado = 'emitida';
+      f.correlativo = estado.siguiente++;
+      f.dia = MES.cierre;
+      estado.hecho.set(n, `Listo: se emitió como la ${numero(f)}.`);
+    } else if (r.veredicto === 'sinEnlace') {
+      r.factura!.guia = n;
+      estado.hecho.set(n, `Listo: la ${numero(r.factura!)} quedó atada a este despacho.`);
+    } else if (r.veredicto === 'sinFactura') {
+      const f: Factura = {
+        correlativo: estado.siguiente++,
+        dia: MES.cierre,
+        cliente: g.cliente!,
+        pedido: g.pedido,
+        guia: n,
+        estado: 'emitida',
+        lineas: g.lineas.map(({ producto, cantidad }) => ({ producto, cantidad })),
+      };
+      estado.facturas.push(f);
+      estado.hecho.set(n, `Listo: se emitió la ${numero(f)}, con lo que dice la guía.`);
+    }
+    actualizar();
+    // El botón desaparece: el foco pasa al siguiente pendiente, o a "Volver a empezar".
+    const siguiente = document.querySelector<HTMLButtonElement>('#pendientes button') ?? $<HTMLButtonElement>('#b-reiniciar');
+    siguiente.focus();
+  }
+
+  function reiniciar() {
+    estado.facturas = copiar();
+    estado.siguiente = primerLibre;
+    estado.hecho.clear();
+    estado.mano = null;
+    actualizar();
+    document.querySelector<HTMLButtonElement>('#pendientes button')?.focus();
+  }
+
+  // --- Controles ---
+
+  const fMotivo = $<HTMLSelectElement>('#f-motivo');
+  fMotivo.replaceChildren(
+    new Option(`Todos los motivos (${guias.length})`, ''),
+    ...motivos.map((m) => {
+      const n = guias.filter((g) => g.motivo === m.codigo).length;
+      return new Option(`${m.codigo} · ${m.nombre} (${n})`, m.codigo);
+    }),
+  );
+  fMotivo.addEventListener('input', () => {
+    estado.motivo = fMotivo.value;
+    dibujarGuias();
+  });
+
+  document.querySelectorAll<HTMLInputElement>('input[name="modo"]').forEach((radio) =>
+    radio.addEventListener('change', () => {
+      estado.modo = radio.value as Modo;
+      actualizar();
+    }),
+  );
+
+  $('#contadores').addEventListener('click', (e) => {
+    const boton = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-veredicto]');
+    if (!boton) return;
+    const v = boton.dataset.veredicto as Veredicto;
+    estado.filtro = estado.filtro === v ? null : v;
+    dibujarControl();
+    $(`#contadores button[data-veredicto="${v}"]`).focus();
+  });
+
+  $('#mano-guias').addEventListener('click', (e) => {
+    const boton = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-guia]');
+    if (!boton) return;
+    const n = boton.dataset.guia!;
+    estado.mano = estado.mano === n ? null : n;
+    dibujarMano();
+    $(`#mano-guias button[data-guia="${n}"]`).focus();
+  });
+
+  $('#pendientes').addEventListener('click', (e) => {
+    const boton = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-guia]');
+    if (boton) corregir(boton.dataset.guia!);
+  });
+  $('#b-reiniciar').addEventListener('click', reiniciar);
+
+  const fDoc = $<HTMLSelectElement>('#f-doc');
+  const grupoGuias = document.createElement('optgroup');
+  grupoGuias.label = 'Guías de venta';
+  grupoGuias.append(
+    ...ventas.map((g) => new Option(`${g.numero} · ${destinatario(g)}`, g.numero, false, g.numero === estado.elegido)),
+  );
+  const grupoServicios = document.createElement('optgroup');
+  grupoServicios.label = 'Un servicio, sin guía';
+  grupoServicios.append(
+    ...servicios.map(
+      (f) => new Option(`${numero(f)} · Instalación · ${cliente(f.cliente).razonSocial}`, claveServicio(f)),
+    ),
+  );
+  fDoc.replaceChildren(grupoGuias, grupoServicios);
+  fDoc.addEventListener('input', () => {
+    estado.elegido = fDoc.value;
+    dibujarDocumentos();
+  });
+
+  actualizar();
+</script>
+
+<style is:global>
+  /* Las filas se dibujan desde el script, así que estos estilos no pueden ir
+     con ámbito: van prefijados con `dg-` y solo existen en esta página. Como no
+     están en una capa, ganan a las utilidades de Tailwind: no fijan márgenes
+     que el marcado ya pone con clases. Los controles son los de las otras demos. */
+  .dg {
+    --aviso: #9a3412;
+    --aviso-suave: #fff7ed;
+    --bien: #166534;
+    --bien-suave: #f0fdf4;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme='light']) .dg {
+      --aviso: #fdba74;
+      --aviso-suave: #2a160b;
+      --bien: #86efac;
+      --bien-suave: #0b2414;
+    }
+  }
+
+  :root[data-theme='dark'] .dg {
+    --aviso: #fdba74;
+    --aviso-suave: #2a160b;
+    --bien: #86efac;
+    --bien-suave: #0b2414;
+  }
+
+  .dg-h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  .dg-h3 {
+    font-weight: 600;
+  }
+
+  .dg-control {
+    display: grid;
+    align-content: start;
+    gap: 0.25rem;
+    min-width: 0;
+  }
+
+  .dg-etq {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--texto-suave);
+  }
+
+  .dg-campo {
+    width: 100%;
+    min-width: 0;
+    border: 1px solid var(--borde);
+    border-radius: 0.375rem;
+    background: var(--superficie);
+    color: var(--texto);
+    padding: 0.45rem 0.6rem;
+    font: inherit;
+    font-size: 0.9375rem;
+  }
+
+  .dg-boton {
+    border: 1px solid var(--borde);
+    border-radius: var(--radius-card);
+    background: var(--superficie);
+    padding: 0.45rem 0.85rem;
+    font: inherit;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+  }
+
+  .dg-boton:hover {
+    border-color: var(--acento);
+    color: var(--acento);
+  }
+
+  .dg-boton-principal,
+  .dg-boton-principal:hover {
+    border-color: var(--acento);
+    background: var(--acento);
+    color: var(--fondo);
+  }
+
+  .dg-boton-principal:hover {
+    opacity: 0.9;
+  }
+
+  .dg-segmento {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 0.2rem;
+    border: 1px solid var(--borde);
+    border-radius: var(--radius-card);
+    background: var(--superficie);
+    padding: 0.2rem;
+  }
+
+  .dg-segmento label {
+    position: relative;
+  }
+
+  .dg-segmento input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+
+  .dg-segmento span {
+    display: block;
+    border-radius: 0.375rem;
+    padding: 0.4rem 0.8rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--texto-suave);
+  }
+
+  .dg-segmento input:checked + span {
+    background: var(--acento);
+    color: var(--fondo);
+  }
+
+  .dg-segmento input:focus-visible + span {
+    outline: 2px solid var(--acento);
+    outline-offset: 2px;
+  }
+
+  .dg-caja {
+    max-width: 48rem;
+    border: 1px solid var(--borde);
+    border-radius: var(--radius-card);
+    background: var(--superficie);
+    padding: 1rem 1.25rem;
+  }
+
+  .dg-sub {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 400;
+    color: var(--texto-suave);
+  }
+
+  /* Chips: veredictos y "se factura". */
+  .dg-chip {
+    display: inline-block;
+    justify-self: start;
+    border: 1px solid currentColor;
+    border-radius: 999px;
+    padding: 0.05rem 0.55rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1.5;
+    white-space: nowrap;
+  }
+
+  .dg-chip-si,
+  .dg-v-correcto {
+    color: var(--acento);
+  }
+
+  .dg-chip-no {
+    border-style: dashed;
+    color: var(--texto-suave);
+    font-weight: 500;
+  }
+
+  .dg-v-borrador,
+  .dg-v-sinEnlace {
+    color: var(--aviso);
+  }
+
+  .dg-chip.dg-v-sinFactura {
+    border-color: var(--aviso);
+    background: var(--aviso);
+    color: var(--superficie);
+  }
+
+  /* Las listas: tarjetas en el celular y filas con columnas en escritorio. */
+  .dg-lista {
+    border: 1px solid var(--borde);
+    border-radius: var(--radius-card);
+    background: var(--superficie);
+  }
+
+  .dg-lista-alta {
+    max-height: 30rem;
+    overflow-y: auto;
+  }
+
+  .dg-cabecera {
+    display: none;
+  }
+
+  .dg-fila {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.2rem 0.75rem;
+    border-top: 1px solid var(--borde);
+    padding: 0.55rem 0.9rem;
+    font-size: 0.875rem;
+  }
+
+  .dg-fila:first-child {
+    border-top: 0;
+  }
+
+  .dg-fila > .dg-chip {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
+  }
+
+  .dg-fila > :not(.dg-c-guia, .dg-chip) {
+    grid-column: 1 / -1;
+  }
+
+  .dg-c-guia {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0 0.6rem;
+  }
+
+  .dg-c-guia strong {
+    font-family: var(--font-mono);
+    font-weight: 600;
+  }
+
+  .dg-c-guia span {
+    font-size: 0.75rem;
+    color: var(--texto-suave);
+  }
+
+  .dg-c-quien {
+    font-weight: 500;
+  }
+
+  .dg-c-motivo {
+    font-size: 0.8125rem;
+    color: var(--texto-suave);
+  }
+
+  .dg-c-factura {
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+  }
+
+  .dg-c-factura .dg-sub {
+    font-family: var(--font-sans);
+  }
+
+  .dg-falta {
+    color: var(--aviso);
+    font-weight: 600;
+  }
+
+  .dg-c-que {
+    font-size: 0.8125rem;
+    color: var(--aviso);
+    font-weight: 500;
+  }
+
+  .dg-c-aviso {
+    color: var(--texto-suave);
+    font-weight: 400;
+  }
+
+  .dg-no-venta .dg-c-guia strong,
+  .dg-no-venta .dg-c-quien {
+    color: var(--texto-suave);
+  }
+
+  .dg-fila-sinFactura {
+    background: var(--aviso-suave);
+  }
+
+  .dg-vacia {
+    display: block;
+    color: var(--texto-suave);
+  }
+
+  @media (min-width: 768px) {
+    .dg-cabecera {
+      display: grid;
+      gap: 0 0.75rem;
+      margin-bottom: 0.4rem;
+      padding: 0 0.9rem;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--texto-suave);
+    }
+
+    .dg-cols-guia {
+      grid-template-columns: 9.5rem minmax(0, 1.3fr) minmax(0, 1fr) 7.5rem;
+    }
+
+    .dg-cols-control {
+      grid-template-columns: 9.5rem minmax(0, 1fr) 11rem 10rem;
+    }
+
+    .dg-fila {
+      align-items: start;
+    }
+
+    .dg-fila > :not(.dg-c-guia, .dg-chip) {
+      grid-column: auto;
+    }
+
+    .dg-fila > .dg-chip {
+      grid-column: auto;
+      grid-row: auto;
+      justify-self: start;
+    }
+
+    .dg-c-guia {
+      display: grid;
+      gap: 0;
+    }
+
+    .dg-fila > .dg-c-que {
+      grid-column: 2 / -1;
+    }
+  }
+
+  /* 2. Contadores que filtran, y avisos. */
+  .dg-contadores {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5rem;
+  }
+
+  .dg-contador {
+    display: grid;
+    justify-items: start;
+    gap: 0.1rem;
+    border: 1px solid var(--borde);
+    border-radius: var(--radius-card);
+    background: var(--superficie);
+    padding: 0.6rem 0.8rem;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .dg-contador strong {
+    font-family: var(--font-mono);
+    font-size: 1.75rem;
+    font-weight: 600;
+    line-height: 1.1;
+  }
+
+  .dg-contador span {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--texto-suave);
+  }
+
+  .dg-contador.dg-v-sinFactura strong,
+  .dg-contador.dg-v-sinEnlace strong,
+  .dg-contador.dg-v-borrador strong {
+    color: var(--aviso);
+  }
+
+  .dg-contador:hover {
+    border-color: var(--acento);
+  }
+
+  .dg-contador[aria-pressed='true'] {
+    border-color: var(--acento);
+    box-shadow: inset 0 0 0 1px var(--acento);
+    background: var(--acento-suave);
+  }
+
+  .dg-contador:focus-visible,
+  .dg-mano-guia:focus-visible {
+    outline: 2px solid var(--acento);
+    outline-offset: 2px;
+  }
+
+  @media (min-width: 640px) {
+    .dg-contadores {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+
+  .dg-avisos {
+    display: grid;
+    gap: 0.4rem;
+    max-width: 48rem;
+  }
+
+  .dg-aviso {
+    border-left: 3px solid var(--aviso);
+    padding: 0.2rem 0 0.2rem 0.75rem;
+    font-size: 0.875rem;
+  }
+
+  /* 2b. Cruzar a mano: dos listas, sin enlace entre ellas. */
+  .dg-mano {
+    display: grid;
+    gap: 1rem;
+  }
+
+  .dg-lista-mano {
+    max-height: 22rem;
+    overflow-y: auto;
+  }
+
+  .dg-mano-guia,
+  .dg-mano-factura {
+    display: grid;
+    grid-template-columns: 5.5rem minmax(0, 1fr) auto;
+    gap: 0 0.6rem;
+    width: 100%;
+    border-top: 1px solid var(--borde);
+    padding: 0.45rem 0.8rem;
+    font: inherit;
+    font-size: 0.8125rem;
+    text-align: left;
+  }
+
+  li:first-child > .dg-mano-guia,
+  .dg-mano-factura:first-child {
+    border-top: 0;
+  }
+
+  .dg-mano-guia {
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+  }
+
+  .dg-mano-guia:hover {
+    background: var(--acento-suave);
+  }
+
+  .dg-mano-guia[aria-pressed='true'] {
+    background: var(--acento-suave);
+    box-shadow: inset 3px 0 0 var(--acento);
+  }
+
+  .dg-mano-num {
+    font-family: var(--font-mono);
+    font-weight: 600;
+  }
+
+  .dg-mano-quien {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .dg-mano-dato {
+    font-size: 0.75rem;
+    color: var(--texto-suave);
+    white-space: nowrap;
+  }
+
+  /* La fecha va bajo el número; el motivo o el monto, a la derecha. */
+  .dg-mano-guia > :nth-child(2),
+  .dg-mano-factura > :nth-child(2) {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .dg-mano-guia > :nth-child(3),
+  .dg-mano-factura > :nth-child(3) {
+    grid-column: 2;
+    grid-row: 1 / 3;
+    align-self: center;
+  }
+
+  .dg-mano-guia > :nth-child(4),
+  .dg-mano-factura > :nth-child(4) {
+    grid-column: 3;
+    grid-row: 1 / 3;
+    align-self: center;
+  }
+
+  .dg-mano-monto {
+    font-family: var(--font-mono);
+    color: var(--texto);
+  }
+
+  .dg-candidata {
+    background: var(--aviso-suave);
+    box-shadow: inset 3px 0 0 var(--aviso);
+  }
+
+  .dg-apagada {
+    opacity: 0.45;
+  }
+
+  @media (min-width: 768px) {
+    .dg-mano {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  /* 3. Corregir. */
+  .dg-barra {
+    height: 0.5rem;
+    overflow: hidden;
+    border-radius: 999px;
+    background: var(--fondo);
+    box-shadow: inset 0 0 0 1px var(--borde);
+  }
+
+  .dg-barra span {
+    display: block;
+    height: 100%;
+    border-radius: 999px;
+    background: var(--acento);
+    transition: width 0.4s ease;
+  }
+
+  .dg-barra span.dg-barra-llena {
+    background: var(--bien);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .dg-barra span {
+      transition: none;
+    }
+  }
+
+  .dg-pendientes {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .dg-pendiente {
+    display: grid;
+    align-content: start;
+    justify-items: start;
+    gap: 0.35rem;
+    border: 1px solid var(--borde);
+    border-radius: var(--radius-card);
+    background: var(--superficie);
+    padding: 0.85rem 1rem;
+    font-size: 0.875rem;
+  }
+
+  .dg-pendiente.dg-fila-sinFactura {
+    border-color: var(--aviso);
+  }
+
+  .dg-pendiente.dg-fila-correcto {
+    border-color: var(--bien);
+    background: var(--bien-suave);
+  }
+
+  .dg-pendiente-cab strong {
+    font-family: var(--font-mono);
+  }
+
+  .dg-pendiente-que {
+    font-size: 0.8125rem;
+  }
+
+  .dg-listo {
+    color: var(--bien);
+    font-weight: 600;
+  }
+
+  .dg-pendiente .dg-boton {
+    margin-top: 0.25rem;
+  }
+
+  @media (min-width: 640px) {
+    .dg-pendientes {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .dg-pendientes {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  /* 4. La guía y la factura, lado a lado en escritorio. */
+  .dg-docs {
+    display: grid;
+    gap: 1rem;
+    align-items: start;
+  }
+
+  .dg-doc {
+    display: grid;
+    gap: 0.75rem;
+    min-width: 0;
+    border: 1px solid var(--borde);
+    border-radius: var(--radius-card);
+    background: var(--superficie);
+    padding: 1rem 1.1rem;
+  }
+
+  .dg-doc-previa {
+    border-style: dashed;
+    border-color: var(--aviso);
+  }
+
+  .dg-doc-tipo {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--acento);
+  }
+
+  .dg-doc-num {
+    margin-top: -0.6rem;
+    font-family: var(--font-mono);
+    font-size: 1.25rem;
+    font-weight: 600;
+  }
+
+  .dg-doc-estado {
+    font-size: 0.8125rem;
+    color: var(--texto-suave);
+  }
+
+  .dg-doc-previa .dg-doc-estado {
+    color: var(--aviso);
+    font-weight: 500;
+  }
+
+  .dg-doc-nota {
+    font-size: 0.875rem;
+    color: var(--texto-suave);
+  }
+
+  .dg-doc-destacado {
+    border-left: 3px solid var(--acento);
+    padding-left: 0.65rem;
+    color: var(--texto);
+  }
+
+  .dg-datos {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5rem 0.75rem;
+    font-size: 0.8125rem;
+  }
+
+  .dg-dato:nth-child(3) {
+    grid-column: 1 / -1;
+  }
+
+  .dg-dato dt {
+    font-size: 0.6875rem;
+    color: var(--texto-suave);
+  }
+
+  .dg-dato dd {
+    font-weight: 500;
+  }
+
+  .dg-tabla {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8125rem;
+  }
+
+  .dg-tabla th,
+  .dg-tabla td {
+    border-bottom: 1px solid var(--borde);
+    padding: 0.4rem 0.35rem;
+    text-align: left;
+    vertical-align: top;
+  }
+
+  .dg-tabla th {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--texto-suave);
+  }
+
+  .dg-tabla .dg-num {
+    font-family: var(--font-mono);
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  .dg-tabla th.dg-num {
+    font-family: inherit;
+  }
+
+  .dg-sumas {
+    display: grid;
+    gap: 0.2rem;
+    font-size: 0.8125rem;
+  }
+
+  .dg-sumas div {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .dg-sumas dd {
+    font-family: var(--font-mono);
+  }
+
+  .dg-sumas-total {
+    font-weight: 600;
+  }
+
+  .dg-cargo {
+    display: grid;
+    gap: 0.4rem;
+    border-radius: 0.375rem;
+    padding: 0.7rem 0.8rem;
+    background: var(--fondo);
+  }
+
+  .dg-cargo-retencion,
+  .dg-cargo-detraccion {
+    background: var(--acento-suave);
+    box-shadow: inset 3px 0 0 var(--acento);
+  }
+
+  .dg-cargo-titulo {
+    font-weight: 600;
+  }
+
+  .dg-cargo-retencion .dg-cargo-titulo,
+  .dg-cargo-detraccion .dg-cargo-titulo {
+    color: var(--acento);
+  }
+
+  .dg-cargo-porque {
+    font-size: 0.8125rem;
+    color: var(--texto-suave);
+  }
+
+  .dg-leyenda {
+    font-size: 0.75rem;
+    font-style: italic;
+  }
+
+  @media (min-width: 768px) {
+    .dg-docs {
+      grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+    }
+  }
+
+  .dg-reglas {
+    display: grid;
+    gap: 0.35rem;
+  }
+
+  .dg-reglas li {
+    border-left: 3px solid var(--borde);
+    padding-left: 0.75rem;
+  }
+</style>
