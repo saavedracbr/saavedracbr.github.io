@@ -1,0 +1,291 @@
+---
+/**
+ * Carrusel del post del 10 nov.: "SAP en un simulador".
+ * El problema, los 6 pasos del motor y las herramientas salen del caso
+ * `juego-de-negocios` (casos.ts), para no decir nada que el caso no diga. ERPsim
+ * no tiene un resultado publicable, así que no lleva cifras del juego.
+ * `npm run carruseles` lo imprime a `docs/marca/carrusel-erpsim.pdf`.
+ */
+import Carrusel from '../../../components/marca/Carrusel.astro';
+import PieLamina from '../../../components/marca/PieLamina.astro';
+import { casos } from '../../../data/casos.ts';
+import { cifrasErp, persona } from '../../../data/perfil.ts';
+import { urlVisible } from '../../../utils/rutas.ts';
+
+const caso = casos.find((c) => c.slug === 'juego-de-negocios');
+const motor = caso?.diagramas.find((d) => d.titulo === 'El motor para ERPsim');
+if (!caso || motor?.pasos.length !== 6) throw new Error('carrusel/erpsim: falta el caso Juego de Negocios o los 6 pasos del motor.');
+
+const herramientas = caso.herramientas.filter((h) => h !== 'Business Strategy Game');
+const regiones = ['Región 1', 'Región 2', 'Región 3'];
+const TOTAL = 6;
+---
+
+<Carrusel titulo="Carrusel: SAP en un simulador">
+  <section class="lamina">
+    <p class="antetitulo">{caso.estado} · Juego de Negocios</p>
+    <h1>SAP en un simulador: el motor que decide la reposición</h1>
+    <div class="red" aria-hidden="true">
+      <span class="planta">Planta</span>
+      <span class="flechas">
+        {regiones.map(() => <span>¿cuánto?</span>)}
+      </span>
+      <span class="regiones">
+        {regiones.map((r) => <span>{r}</span>)}
+      </span>
+    </div>
+    <p class="texto">ERPsim corre sobre SAP S/4HANA. El motor lo construí en Python, aunque el curso no lo pedía.</p>
+    <PieLamina numero={1} total={TOTAL} />
+  </section>
+
+  <section class="lamina">
+    <p class="antetitulo">El problema</p>
+    <h2>Cada ronda, la misma pregunta: ¿cuánto mando a cada región?</h2>
+    <p class="texto">{caso.problema[1]}</p>
+    <p class="texto acento">Decidirlo a ojo sale caro.</p>
+    <PieLamina numero={2} total={TOTAL} />
+  </section>
+
+  <section class="lamina">
+    <p class="antetitulo">El motor · pasos 1 a 3</p>
+    <h2>Del dato al inventario objetivo</h2>
+    <ol class="flujo">
+      {
+        motor.pasos.slice(0, 3).map((p, i) => (
+          <li>
+            <span class="numero">{i + 1}</span>
+            <span class="paso">
+              <span class="titulo-paso">{p.titulo}</span>
+              <span class="detalle">{p.detalle}</span>
+            </span>
+          </li>
+        ))
+      }
+    </ol>
+    <PieLamina numero={3} total={TOTAL} />
+  </section>
+
+  <section class="lamina">
+    <p class="antetitulo">El motor · pasos 4 a 6</p>
+    <h2>Del objetivo a la tabla de SAP</h2>
+    <ol class="flujo">
+      {
+        motor.pasos.slice(3).map((p, i) => (
+          <li class:list={{ salida: i === 2 }}>
+            <span class="numero">{i + 4}</span>
+            <span class="paso">
+              <span class="titulo-paso">{p.titulo}</span>
+              <span class="detalle">{p.detalle}</span>
+            </span>
+          </li>
+        ))
+      }
+    </ol>
+    <PieLamina numero={4} total={TOTAL} />
+  </section>
+
+  <section class="lamina">
+    <p class="antetitulo">Lo que me llevo</p>
+    <h2>El pronóstico no decide: las reglas sí</h2>
+    <ul class="puntos">
+      <li>El pronóstico dice cuánto se va a vender.</li>
+      <li>Las reglas dicen cuánto mandar: cobertura, prioridad, capacidad y flete.</li>
+      <li>La salida es la que SAP necesita: una tabla de traslados, lista para cargar.</li>
+    </ul>
+    <p class="datos">{herramientas.map((h) => <span>{h}</span>)}</p>
+    <PieLamina numero={5} total={TOTAL} />
+  </section>
+
+  <section class="lamina">
+    <p class="antetitulo">En corto</p>
+    <h2>¿Sé SAP? En simulación, sí.</h2>
+    <p class="texto">
+      En una implementación real, mi experiencia es Odoo: lidero el ERP de una planta, con {cifrasErp.modulos} módulos propios
+      en producción.
+    </p>
+    <p class="enlace">{urlVisible(persona.web)}/casos/{caso.slug}</p>
+    <p class="texto">
+      Soy estudiante de Ingeniería Industrial en la U. de Lima y busco prácticas en procesos, transformación digital o
+      planeamiento.
+    </p>
+    <PieLamina numero={6} total={TOTAL} />
+  </section>
+</Carrusel>
+
+<style>
+  /* Portada: la planta y las 3 regiones, con la pregunta en cada envío. */
+  .red {
+    margin-top: 64px;
+    display: grid;
+    grid-template-columns: 240px 1fr 260px;
+    gap: 24px;
+    align-items: center;
+  }
+
+  .planta,
+  .regiones span {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 18px;
+    font-weight: 600;
+  }
+
+  .planta {
+    height: 200px;
+    background: #145c8c;
+    color: #ffffff;
+    font-size: 40px;
+  }
+
+  .flechas,
+  .regiones {
+    display: grid;
+    gap: 24px;
+  }
+
+  /* La pregunta va encima de una flecha punteada, a la altura del centro de cada región. */
+  .flechas span {
+    position: relative;
+    height: 96px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 2px;
+    font-family: var(--font-mono), Consolas, monospace;
+    font-size: 28px;
+    color: #145c8c;
+  }
+
+  .flechas span::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 14px;
+    top: 47px;
+    border-top: 3px dashed #3f8fc4;
+  }
+
+  .flechas span::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 38px;
+    border-left: 18px solid #3f8fc4;
+    border-top: 10px solid transparent;
+    border-bottom: 10px solid transparent;
+  }
+
+  .regiones span {
+    height: 96px;
+    background: #ffffff;
+    border: 3px solid #3f8fc4;
+    color: #151a21;
+    font-size: 34px;
+  }
+
+  .flujo {
+    position: relative;
+    margin-top: 56px;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: 28px;
+  }
+
+  /* La línea que une los números, por detrás de ellos. */
+  .flujo::before {
+    content: '';
+    position: absolute;
+    left: 35px;
+    top: 56px;
+    bottom: 56px;
+    width: 3px;
+    background: #c3ccd8;
+  }
+
+  .flujo li {
+    position: relative;
+    display: grid;
+    grid-template-columns: 72px 1fr;
+    gap: 28px;
+    align-items: center;
+  }
+
+  .numero {
+    width: 72px;
+    height: 72px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: #ffffff;
+    border: 3px solid #3f8fc4;
+    color: #145c8c;
+    font-family: var(--font-mono), Consolas, monospace;
+    font-size: 32px;
+    font-weight: 600;
+  }
+
+  .paso {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 26px 32px;
+    border-radius: 18px;
+    background: #ffffff;
+    border: 2px solid #d5dbe3;
+  }
+
+  .titulo-paso {
+    font-size: 42px;
+    font-weight: 600;
+    color: #151a21;
+  }
+
+  .detalle {
+    font-size: 34px;
+    line-height: 1.3;
+    color: #2f3a48;
+  }
+
+  /* El último paso es la salida: lo que se carga en SAP. */
+  .salida .numero,
+  .salida .paso {
+    background: #145c8c;
+    border-color: #145c8c;
+    color: #ffffff;
+  }
+
+  .salida .titulo-paso,
+  .salida .detalle {
+    color: #ffffff;
+  }
+
+  .datos {
+    margin-top: 48px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    font-size: 26px;
+    font-weight: 600;
+  }
+
+  .datos span {
+    padding: 8px 18px;
+    border-radius: 999px;
+    background: #e3edf5;
+    color: #145c8c;
+  }
+
+  .enlace {
+    margin-top: 44px;
+    padding: 28px 32px;
+    border-radius: 20px;
+    background: #145c8c;
+    color: #ffffff;
+    font-size: 36px;
+    font-weight: 600;
+    text-align: center;
+  }
+</style>
