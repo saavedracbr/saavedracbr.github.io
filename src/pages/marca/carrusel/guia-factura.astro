@@ -1,0 +1,294 @@
+---
+/**
+ * Carrusel del post del 17 nov.: "¿Facturamos todo lo que despachamos?".
+ * El problema, los 4 veredictos y el resultado salen del caso `ruc-factura`
+ * (casos.ts). Las cifras de la lámina 3 (20 guías, 20 facturas, 6 pendientes)
+ * son de la demo, con datos ficticios, y se calculan aquí desde sus datos con la
+ * misma regla del control: si la demo cambia, el carrusel cambia con ella.
+ * `npm run carruseles` lo imprime a `docs/marca/carrusel-guia-factura.pdf`.
+ */
+import { Image } from 'astro:assets';
+import Carrusel from '../../../components/marca/Carrusel.astro';
+import PieLamina from '../../../components/marca/PieLamina.astro';
+import { casos } from '../../../data/casos.ts';
+import { procesos } from '../../../data/erp.ts';
+import { persona } from '../../../data/perfil.ts';
+import { facturas, guias, motivos } from '../../../data/demos/guia-factura.ts';
+import { urlVisible } from '../../../utils/rutas.ts';
+
+const caso = casos.find((c) => c.slug === 'ruc-factura');
+const proceso = procesos.find((p) => p.caso.slug === 'ruc-factura');
+const lista = caso?.diagramas.find((d) => d.titulo === 'Los cuatro veredictos');
+if (!caso?.demoUrl || !proceso || lista?.pasos.length !== 4) {
+  throw new Error('carrusel/guia-factura: falta el caso del RUC a la factura, su demo o los 4 veredictos.');
+}
+
+type Veredicto = 'correcto' | 'borrador' | 'sinEnlace' | 'sinFactura';
+// El orden de los veredictos en el caso: Correcto, Factura en borrador, Facturado sin enlace, Sin factura.
+const CLAVES: Veredicto[] = ['correcto', 'borrador', 'sinEnlace', 'sinFactura'];
+const veredictos = lista.pasos.map((p, i) => ({ ...p, clave: CLAVES[i] }));
+
+// La regla del control, sobre los datos de la demo: primero la factura atada a la guía; si no hay, una del mismo pedido.
+const ventas = guias.filter((g) => motivos.find((m) => m.codigo === g.motivo)?.venta);
+const revisar = (numero: string, pedido?: string): Veredicto => {
+  const atada = facturas.find((f) => f.guia === numero);
+  if (atada) return atada.estado === 'emitida' ? 'correcto' : 'borrador';
+  return facturas.some((f) => !f.guia && pedido && f.pedido === pedido) ? 'sinEnlace' : 'sinFactura';
+};
+const despachos = ventas.map((g) => ({ numero: g.numero, veredicto: revisar(g.numero, g.pedido) }));
+const cuenta = (v: Veredicto) => despachos.filter((d) => d.veredicto === v).length;
+const pendientes = despachos.length - cuenta('correcto');
+if (ventas.length !== 20 || facturas.length !== 20 || pendientes !== 6) {
+  throw new Error(
+    `carrusel/guia-factura: la demo ya no da 20 guías de venta, 20 facturas y 6 pendientes (da ${ventas.length}, ${facturas.length} y ${pendientes}). Revisa la lámina 3.`,
+  );
+}
+
+const arreglos: { clave: Veredicto; accion: string; detalle: string }[] = [
+  { clave: 'sinFactura', accion: 'Emitirla desde la guía', detalle: 'Con lo que de verdad se entregó.' },
+  {
+    clave: 'sinEnlace',
+    accion: 'Enlazar la factura que ya existe',
+    detalle: 'Emitir otra sería facturar dos veces.',
+  },
+  { clave: 'borrador', accion: 'Emitirla', detalle: 'Todavía no tiene número y SUNAT no la tiene.' },
+];
+const nombre = (v: Veredicto) => veredictos.find((x) => x.clave === v)!.titulo;
+const TOTAL = 7;
+---
+
+<Carrusel titulo="Carrusel: ¿Facturamos todo lo que despachamos?">
+  <section class="lamina">
+    <p class="antetitulo">Caso · El ERP de una planta</p>
+    <h1>¿Facturamos todo lo que despachamos?</h1>
+    <Image src={proceso.ilustracion.src} alt="" width={904} loading="eager" class="ilustracion portada" />
+    <PieLamina numero={1} total={TOTAL} />
+  </section>
+
+  <section class="lamina">
+    <p class="antetitulo">Antes</p>
+    <h2>Dos documentos que se emiten por separado</h2>
+    <p class="texto">{caso.problema[2]}</p>
+    <p class="texto acento">{caso.problema[3]}</p>
+    <PieLamina numero={2} total={TOTAL} />
+  </section>
+
+  <section class="lamina">
+    <p class="antetitulo">La trampa de los totales · demo con datos ficticios</p>
+    <h2>¿Cuadra el mes?</h2>
+    <div class="totales" aria-hidden="true">
+      <span class="total"><span class="cifra">{ventas.length}</span>guías de venta</span>
+      <span class="igual">=</span>
+      <span class="total"><span class="cifra">{facturas.length}</span>facturas</span>
+    </div>
+    <p class="texto">
+      Por los totales, sí. Pero una factura es de una guía de septiembre, otra es de un servicio que no lleva guía y dos
+      siguen en borrador.
+    </p>
+    <div class="despachos" aria-hidden="true">
+      {despachos.map((d) => <span class:list={['celda', d.veredicto]}></span>)}
+    </div>
+    <p class="leyenda" aria-hidden="true">Cada cuadro es un despacho · lleno: correcto · vacío: pendiente</p>
+    <p class="texto acento">Guía por guía, {pendientes} de los {despachos.length} despachos tienen algo pendiente.</p>
+    <PieLamina numero={3} total={TOTAL} />
+  </section>
+
+  <section class="lamina">
+    <p class="antetitulo">Lo que hice</p>
+    <h2>Un control que le da un veredicto a cada despacho</h2>
+    <ul class="veredictos">
+      {
+        veredictos.map((v) => (
+          <li class={v.clave}>
+            <span class="nombre-v">{v.titulo}</span>
+            <span class="detalle">{v.detalle}</span>
+          </li>
+        ))
+      }
+    </ul>
+    <PieLamina numero={4} total={TOTAL} />
+  </section>
+
+  <section class="lamina">
+    <p class="antetitulo">Por qué se separan</p>
+    <h2>Cada veredicto se corrige distinto</h2>
+    <ul class="veredictos">
+      {
+        arreglos.map((a) => (
+          <li class={a.clave}>
+            <span class="etiqueta">{nombre(a.clave)}</span>
+            <span class="nombre-v">{a.accion}</span>
+            <span class="detalle">{a.detalle}</span>
+          </li>
+        ))
+      }
+    </ul>
+    <p class="texto acento">En la demo: {pendientes} arreglos y {despachos.length} de {despachos.length} facturados.</p>
+    <PieLamina numero={5} total={TOTAL} />
+  </section>
+
+  <section class="lamina">
+    <p class="antetitulo">Resultado · {caso.estado}</p>
+    <h2>Una sola lista de lo que falta facturar</h2>
+    <ul class="puntos">{caso.resultado.map((r) => <li>{r}</li>)}</ul>
+    <p class="texto acento">{caso.solucion[2]}</p>
+    <PieLamina numero={6} total={TOTAL} />
+  </section>
+
+  <section class="lamina">
+    <p class="antetitulo">Pruébalo</p>
+    <h2>Armé una demo con datos ficticios</h2>
+    <p class="texto">{caso.demo}</p>
+    <p class="enlace">{urlVisible(persona.web)}{caso.demoUrl}</p>
+    <p class="texto">
+      Soy estudiante de Ingeniería Industrial en la U. de Lima y busco prácticas en procesos, transformación digital o
+      planeamiento.
+    </p>
+    <PieLamina numero={7} total={TOTAL} />
+  </section>
+</Carrusel>
+
+<style>
+  .portada {
+    margin-top: 56px;
+  }
+
+  /* Lámina 3: los dos totales iguales, y debajo los 20 despachos, uno por uno. */
+  .totales {
+    margin-top: 40px;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 28px;
+    align-items: center;
+  }
+
+  .total {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 28px 24px 32px;
+    border-radius: 20px;
+    background: #ffffff;
+    border: 2px solid #d5dbe3;
+    font-size: 34px;
+    color: #2f3a48;
+  }
+
+  .cifra {
+    font-family: var(--font-mono), Consolas, monospace;
+    font-size: 108px;
+    line-height: 1.05;
+    font-weight: 600;
+    color: #145c8c;
+  }
+
+  .igual {
+    font-family: var(--font-mono), Consolas, monospace;
+    font-size: 96px;
+    color: #4a5563;
+  }
+
+  .despachos {
+    margin-top: 36px;
+    display: grid;
+    grid-template-columns: repeat(10, 1fr);
+    gap: 14px;
+  }
+
+  .leyenda {
+    margin-top: 16px;
+    font-family: var(--font-mono), Consolas, monospace;
+    font-size: 22px;
+    color: #4a5563;
+  }
+
+  .celda {
+    height: 56px;
+    border-radius: 12px;
+    background: #145c8c;
+  }
+
+  /* Los pendientes, con el mismo código de color de los veredictos. */
+  .celda.borrador {
+    background: #ffffff;
+    border: 4px dashed #3f8fc4;
+  }
+
+  .celda.sinEnlace {
+    background: #ffffff;
+    border: 4px solid #3f8fc4;
+  }
+
+  .celda.sinFactura {
+    background: #ffffff;
+    border: 4px solid #9a3b3b;
+  }
+
+  /* Láminas 4 y 5: una tarjeta por veredicto, con su barra de color a la izquierda. */
+  .veredictos {
+    margin-top: 44px;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: 20px;
+  }
+
+  .veredictos li {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 26px 32px 28px 40px;
+    border-radius: 18px;
+    background: #ffffff;
+    border: 2px solid #d5dbe3;
+    border-left: 14px solid #145c8c;
+  }
+
+  .veredictos li.borrador {
+    border-left-style: dashed;
+    border-left-color: #3f8fc4;
+  }
+
+  .veredictos li.sinEnlace {
+    border-left-color: #3f8fc4;
+  }
+
+  .veredictos li.sinFactura {
+    border-left-color: #9a3b3b;
+  }
+
+  .etiqueta {
+    font-family: var(--font-mono), Consolas, monospace;
+    font-size: 24px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #4a5563;
+  }
+
+  .sinFactura .etiqueta {
+    color: #9a3b3b;
+  }
+
+  .nombre-v {
+    font-size: 42px;
+    font-weight: 600;
+    color: #151a21;
+  }
+
+  .detalle {
+    font-size: 34px;
+    line-height: 1.3;
+    color: #2f3a48;
+  }
+
+  .enlace {
+    margin-top: 44px;
+    padding: 28px 32px;
+    border-radius: 20px;
+    background: #145c8c;
+    color: #ffffff;
+    font-size: 40px;
+    font-weight: 600;
+    text-align: center;
+  }
+</style>
